@@ -10,6 +10,28 @@ import Signup from "./pages/Signup";
 import LandingPage from "./pages/landingpage";
 import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
+const MOODS = [
+{ key: "study", emoji: "📚", label: "Study", sub: "Wifi · Quiet", color: "#667eea", bg: "#e0e4ff" },
+  { key: "hangout", emoji: "🍔", label: "Hangout", sub: "Cozy · Casual", color: "#ec4899", bg: "#fce7f3" },
+  { key: "quick-bite", emoji: "🍕", label: "Quick Bite", sub: "Fast · Easy", color: "#f59e0b", bg: "#fef3c7" },
+  { key: "budget", emoji: "🪙", label: "Budget", sub: "Cheap · Value", color: "#10b981", bg: "#d1fae5" },
+    { key: "nightlife", emoji: "🎉", label: "Nightlife", sub: "Clubs · Music", color: "#ec4899", bg: "#fdf2f8" },
+  { key: "gaming", emoji: "🎮", label: "Gaming", sub: "Arcade · Fun", color: "#8b5cf6", bg: "#f5f3ff" },
+  { key: "fitness", emoji: "🏋️", label: "Fitness", sub: "Gym · Active", color: "#06b6d4", bg: "#ecfeff" },
+  { key: "rentals", emoji: "🚗", label: "Rentals", sub: "Bikes · Cars", color: "#84cc16", bg: "#f7fee7" },
+];
+
+const CITIES = [
+  { key: "manipal", label: "Manipal", lat: 13.3525, lon: 74.7934 },
+  { key: "mangalore", label: "Mangalore", lat: 12.9716, lon: 74.8631 },
+  { key: "bangalore", label: "Bangalore", lat: 12.9716, lon: 77.5946 },
+  { key: "mumbai", label: "Mumbai", lat: 19.0760, lon: 72.8777 },
+  { key: "delhi", label: "Delhi", lat: 28.7041, lon: 77.1025 },
+  { key: "hyderabad", label: "Hyderabad", lat: 17.3850, lon: 78.4867 },
+  { key: "pune", label: "Pune", lat: 18.5204, lon: 73.8567 },
+  { key: "chennai", label: "Chennai", lat: 13.0827, lon: 80.2707 },
+];
+
 
 const RADIUS_OPTIONS = [1, 2, 3, 5, 10];
 const BUDGET_OPTIONS = [
@@ -25,13 +47,8 @@ const SORT_OPTIONS = [
 ];
 
 function Dashboard() {
-  const [moods, setMoods] = useState([]);
-  const [cities, setCities] = useState([]);
-  const [configLoading, setConfigLoading] = useState(true);
-  const [configError, setConfigError] = useState("");
-
   const [mood, setMood] = useState("");
-  const [city, setCity] = useState(null);
+  const [city, setCity] = useState(CITIES[0]);
   const [useGPS, setUseGPS] = useState(true);
   const [gpsLocation, setGpsLocation] = useState(null);
   const [radius, setRadius] = useState(3);
@@ -46,28 +63,6 @@ function Dashboard() {
   const [selectedPlace, setSelectedPlace] = useState(null);
 const [favourites, setFavourites] = useState([]);
   const [activeTab, setActiveTab] = useState("explore");
-
-  // Fetch moods + cities config from the backend
-  useEffect(() => {
-    async function fetchConfig() {
-      try {
-        const [moodsRes, citiesRes] = await Promise.all([
-          fetch("http://localhost:5000/api/config/moods"),
-          fetch("http://localhost:5000/api/config/cities"),
-        ]);
-        if (!moodsRes.ok || !citiesRes.ok) throw new Error("Failed to load app config");
-        const [moodsData, citiesData] = await Promise.all([moodsRes.json(), citiesRes.json()]);
-        setMoods(moodsData);
-        setCities(citiesData);
-        setCity(citiesData[0] || null);
-      } catch (err) {
-        setConfigError(err.message || "Failed to load app config");
-      } finally {
-        setConfigLoading(false);
-      }
-    }
-    fetchConfig();
-  }, []);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -95,7 +90,7 @@ const [favourites, setFavourites] = useState([]);
 
  // line 63 continues as normal
   const getLocation = () =>
-    useGPS && gpsLocation ? gpsLocation : { lat: city?.lat, lon: city?.lon };
+    useGPS && gpsLocation ? gpsLocation : { lat: city.lat, lon: city.lon };
 
   const handleSearch = async () => {
     if (!mood) return;
@@ -195,28 +190,7 @@ const toggleFav = async (place) => {
 
   const activeLocation = useGPS && gpsLocation
     ? "📡 Using your GPS location"
-    : `📍 ${city?.label ?? ""}`;
-
-  if (configLoading) {
-    return (
-      <div>
-        <Navbar />
-        <div className="loading">
-          <div className="loading-spinner" />
-          Loading...
-        </div>
-      </div>
-    );
-  }
-
-  if (configError) {
-    return (
-      <div>
-        <Navbar />
-        <div className="error">❌ {configError}</div>
-      </div>
-    );
-  }
+    : `📍 ${city.label}`;
 
   return (
     <div>
@@ -265,10 +239,10 @@ const toggleFav = async (place) => {
                     GPS
                   </button>
                 )}
-                {cities.map((c) => (
+                {CITIES.map((c) => (
                   <button
                     key={c.key}
-                    className={`city-btn ${!useGPS && city?.key === c.key ? "active" : ""}`}
+                    className={`city-btn ${!useGPS && city.key === c.key ? "active" : ""}`}
                     onClick={() => { setCity(c); setUseGPS(false); }}
                   >
                     {c.label}
@@ -280,7 +254,7 @@ const toggleFav = async (place) => {
             {/* Mood */}
             <p className="section-title">What's your mood?</p>
             <div className="mood-grid">
-              {moods.map((m) => (
+              {MOODS.map((m) => (
                 <button
                   key={m.key}
                   className={`mood-btn ${mood === m.key ? "active" : ""}`}
