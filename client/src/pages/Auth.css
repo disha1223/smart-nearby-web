@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700&family=Poppins:wght@400;500;600;700&display=swap');
+
 body {
   margin: 0;
   font-family: "Poppins", sans-serif;
@@ -8,82 +10,88 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f8f6f2;
+  background: #fafafa;
 }
 
 .auth-card {
   width: 420px;
   background: white;
-  padding: 40px;
-  border-radius: 24px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+  padding: 44px 40px;
+  border-radius: 26px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.06);
 
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-
 .auth-card h1 {
+  font-family: 'Playfair Display', serif;
   text-align: center;
   margin: 0;
-  color: #1f2937;
+  color: #1a1a1a;
   font-size: 2rem;
+  font-weight: 600;
 }
 
 .auth-card p {
   text-align: center;
-  color: #6b7280;
-  margin-bottom: 10px;
+  color: #8a8a8a;
+  margin-bottom: 6px;
+  font-size: 14px;
 }
 
-
 .auth-card input {
-  padding: 14px 16px;
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
+  padding: 14px 20px;
+  border-radius: 100px;
+  border: 1.5px solid #e5e5e5;
   font-size: 15px;
+  font-family: 'Poppins', sans-serif;
   background: white;
-  color: #1f2937;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.2s;
 }
 
 .auth-card input:focus {
-  outline: none;
-  border-color: #6c7ae0;
+  border-color: #4a63f5;
 }
-
-
 
 .auth-card button {
   padding: 14px;
   border: none;
-  border-radius: 12px;
-  background: #6c7ae0;
+  border-radius: 100px;
+  background: #4a63f5;
   color: white;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 15px;
+  font-family: 'Poppins', sans-serif;
   cursor: pointer;
+  margin-top: 4px;
+  transition: all 0.2s;
+  box-shadow: 0 8px 20px rgba(74,99,245,0.25);
 }
 
-
+.auth-card button:hover {
+  background: #3d54e0;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(74,99,245,0.35);
+}
 
 .auth-card span {
   text-align: center;
-  color: #6b7280;
+  color: #8a8a8a;
+  font-size: 13.5px;
 }
 
 .auth-card a {
-  color: #6c7ae0;
+  color: #4a63f5;
   text-decoration: none;
   font-weight: 600;
+  margin-left: 4px;
 }
 
-.auth-card a {
-
-  color: #8b5cf6;
-
-  margin-left: 6px;
-
-  text-decoration: none;
-
+.auth-card a:hover {
+  text-decoration: underline;
 }
