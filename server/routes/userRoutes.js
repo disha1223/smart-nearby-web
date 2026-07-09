@@ -48,5 +48,45 @@ router.get("/favourites", auth, async (req, res) => {
     res.status(500).json({ message: "Error fetching favourites" });
   }
 });
+// Get all journal entries (newest first)
+router.get("/journal", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    const sorted = [...user.journal].sort((a, b) => new Date(b.date) - new Date(a.date));
+    res.json(sorted);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching journal" });
+  }
+});
+
+// Add a journal entry
+router.post("/journal", auth, async (req, res) => {
+  try {
+    const { place, note, date } = req.body;
+    const user = await User.findById(req.userId);
+
+    user.journal.push({ place, note, date: date || new Date() });
+    await user.save();
+
+    const savedEntry = user.journal[user.journal.length - 1];
+    res.status(201).json(savedEntry);
+  } catch (err) {
+    res.status(500).json({ message: "Error saving journal entry" });
+  }
+});
+
+// Delete a journal entry
+router.delete("/journal/:id", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    user.journal = user.journal.filter(
+      (entry) => entry._id.toString() !== req.params.id
+    );
+    await user.save();
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting journal entry" });
+  }
+});
 
 module.exports = router;
