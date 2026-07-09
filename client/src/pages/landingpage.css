@@ -7,70 +7,6 @@
 }
 
 /* NAVBAR */
-.landing2-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 48px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.landing2-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 1.3rem;
-  font-weight: 600;
-}
-
-.landing2-logo em {
-  font-style: italic;
-  color: #4a63f5;
-  font-weight: 600;
-}
-
-.logo-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #4a63f5;
-  color: white;
-}
-
-.landing2-links {
-  display: flex;
-  gap: 32px;
-}
-
-.landing2-links a {
-  text-decoration: none;
-  color: #333;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.landing2-links a:hover {
-  color: #4a63f5;
-}
-
-.landing2-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.signin-btn {
-  background: #111;
-  color: white;
-  padding: 10px 22px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.9rem;
-}
 
 /* HERO */
 .landing2-hero {
@@ -104,12 +40,14 @@
 
 .hero-heading {
   font-family: 'Playfair Display', serif;
-  font-size: 3.4rem;
-  line-height: 1.1;
+  font-style: italic;
+  font-size: 3.8rem;
+  line-height: 1.05;
   font-weight: 600;
+  letter-spacing: -1px;
   margin-bottom: 20px;
+  color: #1a1a1a;
 }
-
 .hero-heading em {
   font-style: italic;
   color: #4a63f5;
@@ -170,12 +108,11 @@
   cursor: pointer;
   flex-shrink: 0;
 }
-
 .discover-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ff8a3d, #ff6b35);
+  background: #3F6DF6;
   color: white;
   border: none;
   padding: 12px 22px;
@@ -185,13 +122,12 @@
   font-size: 0.9rem;
   cursor: pointer;
   flex-shrink: 0;
-  transition: transform 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-
-.discover-btn:hover {
+..discover-btn:hover {
+  background: #3a52e0;
   transform: translateY(-1px);
 }
-
 .hero-stats {
   display: flex;
   align-items: center;

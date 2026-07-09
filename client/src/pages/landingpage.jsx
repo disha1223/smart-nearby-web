@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Search, SlidersHorizontal, Compass, Star, ArrowRight, UtensilsCrossed, Coffee } from "lucide-react";
+import { MapPin, Search, SlidersHorizontal, Star, ArrowRight, UtensilsCrossed, Coffee } from "lucide-react";
+import Navbar from "../components/Navbar";
 import "./landingpage.css";
 
 const FLOATING_PLACES = [
@@ -29,7 +30,6 @@ const BUILDINGS = [
 function LandingPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const username = localStorage.getItem("username");
 
   const handleDiscover = () => {
     navigate("/dashboard");
@@ -37,29 +37,7 @@ function LandingPage() {
 
   return (
     <div className="landing2">
-      <nav className="landing2-nav">
-        <div className="landing2-logo">
-          <span className="logo-badge"><Compass size={18} /></span>
-          <span>
-            Smart <em>Nearby</em>
-          </span>
-        </div>
-
-        <div className="landing2-links">
-          <Link to="/dashboard">Discover</Link>
-          <Link to="/dashboard">Restaurants</Link>
-          <Link to="/dashboard">Experiences</Link>
-          <Link to="/dashboard">Lists</Link>
-        </div>
-
-        <div className="landing2-actions">
-          {username ? (
-            <Link to="/dashboard" className="signin-btn">{username}</Link>
-          ) : (
-            <Link to="/login" className="signin-btn">Sign in</Link>
-          )}
-        </div>
-      </nav>
+      <Navbar />
 
       <section className="landing2-hero">
         <div className="hero-copy">

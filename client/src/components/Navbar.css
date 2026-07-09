@@ -1,59 +1,155 @@
+/* NAVBAR */
 .navbar {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 18px 40px;
-  background: white;
+  justify-content: space-between;
+  padding: 20px 40px;
+  background: #fff;
   border-bottom: 1px solid #f0f0f0;
+  flex-wrap: nowrap;
+  gap: 16px;
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: 'Playfair Display', serif;
   font-size: 1.5rem;
   font-weight: 600;
   color: #1a1a1a;
-  letter-spacing: -0.5px;
   text-decoration: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #4a63f5;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.nav-right-group {
+  display: flex;
+  align-items: center;
+  gap: 40px;
 }
 
 .nav-links {
   display: flex;
-  gap: 12px;
+  gap: 36px;
+}
+.nav-links a {
+  position: relative;
+  text-decoration: none;
+  color: #8a8a8a;
+  font-weight: 500;
+  font-size: 0.95rem;
+  padding: 0 0 14px;
+  transition: color 0.2s ease;
+  line-height: 1;
   align-items: center;
+  display: flex;
+}
+.nav-links a:hover { color: #4a63f5; }
+.nav-links a.active {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+.nav-links a.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4a63f5;
 }
 
-.nav-links a,
-.logout-btn {
-  text-decoration: none;
-  background: #f0f2ff;
-  color: #4a63f5;
-  padding: 9px 20px;
-  border-radius: 100px;
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-shrink: 0;
+}
+.nav-icon-btn {
+  background: none;
   border: none;
   cursor: pointer;
-  font-size: 0.88rem;
-  font-weight: 600;
-  font-family: 'Poppins', sans-serif;
-  transition: 0.2s;
+  color: #333;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+.nav-icon-btn:hover { color: #4a63f5; }
+
+/* Account Button */
+.nav-account-wrapper {
+  position: relative;
 }
 
-.nav-links a:hover,
-.logout-btn:hover {
-  background: #4a63f5;
-  color: white;
-}
-
-.user-section {
+.nav-account-btn{
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.username {
-  background: #f5f5f5;
-  color: #444;
-  padding: 9px 18px;
-  border-radius: 100px;
-  font-size: 0.88rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
   font-weight: 600;
-  border: 1px solid transparent;
+  color: #1a1a1a;
+  text-decoration: none;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-account-btn:hover{
+  opacity:.7;
+}
+
+.nav-account-btn:focus,
+.nav-account-btn:active{
+  outline:none;
+  box-shadow:none;
+}
+
+/* Logout Dropdown */
+.nav-account-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  padding: 6px;
+  min-width: 120px;
+  z-index: 10;
+}
+
+.nav-account-dropdown button {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #1a1a1a;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.nav-account-dropdown button:hover {
+  background: #f5f6ff;
+  color: #4a63f5;
 }

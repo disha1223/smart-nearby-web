@@ -10,27 +10,44 @@ import Signup from "./pages/Signup";
 import LandingPage from "./pages/landingpage";
 import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
+import { SlidersHorizontal, Heart, Search } from "lucide-react";
+import Collections from "./pages/collections";
+import Cities from "./pages/Cities";
+import Journal from "./pages/journal";
+
+import studyImg from "./pages/images/study.jpeg";
+import hangoutImg from "./pages/images/hangg.jpeg";   // adjust filename to match yours
+import quickBiteImg from "./pages/images/bite.jpeg";
+import budgetImg from "./pages/images/hang.jpeg";
+import nightlifeImg from "./pages/images/club.jpeg";
+import gamingImg from "./pages/images/game.jpeg";
+import fitnessImg from "./pages/images/gym.jpeg";
+import rentalsImg from "./pages/images/rent.jpeg";
+import beachImg from "./pages/images/beach.jpeg";
+import hiddenGemImg from "./pages/images/hidden.jpeg";
 const MOODS = [
-{ key: "study", emoji: "📚", label: "Study", sub: "Wifi · Quiet", color: "#667eea", bg: "#e0e4ff" },
-  { key: "hangout", emoji: "🍔", label: "Hangout", sub: "Cozy · Casual", color: "#ec4899", bg: "#fce7f3" },
-  { key: "quick-bite", emoji: "🍕", label: "Quick Bite", sub: "Fast · Easy", color: "#f59e0b", bg: "#fef3c7" },
-  { key: "budget", emoji: "🪙", label: "Budget", sub: "Cheap · Value", color: "#10b981", bg: "#d1fae5" },
-    { key: "nightlife", emoji: "🎉", label: "Nightlife", sub: "Clubs · Music", color: "#ec4899", bg: "#fdf2f8" },
-  { key: "gaming", emoji: "🎮", label: "Gaming", sub: "Arcade · Fun", color: "#8b5cf6", bg: "#f5f3ff" },
-  { key: "fitness", emoji: "🏋️", label: "Fitness", sub: "Gym · Active", color: "#06b6d4", bg: "#ecfeff" },
-  { key: "rentals", emoji: "🚗", label: "Rentals", sub: "Bikes · Cars", color: "#84cc16", bg: "#f7fee7" },
+  { key: "study", label: "Study", sub: "Quiet & Focused", color: "#667eea", bg: "#e0e4ff",
+    img: studyImg },
+  { key: "hangout", label: "Hangout", sub: "Rooftops & Long Tables", color: "#ec4899", bg: "#fce7f3",
+    img: hangoutImg },
+  { key: "quick-bite", label: "Quick Bite", sub: "In a Hurry", color: "#f59e0b", bg: "#fef3c7",
+    img: quickBiteImg },
+  { key: "budget", label: "Budget", sub: "Easy on the Wallet", color: "#10b981", bg: "#d1fae5",
+    img: budgetImg },
+  { key: "nightlife", label: "Nightlife", sub: "After Dark", color: "#ec4899", bg: "#fdf2f8",
+    img: nightlifeImg },
+  { key: "gaming", label: "Gaming", sub: "Play Together", color: "#8b5cf6", bg: "#f5f3ff",
+    img: gamingImg },
+  { key: "fitness", label: "Fitness", sub: "Move Your Body", color: "#06b6d4", bg: "#ecfeff",
+    img: fitnessImg },
+  { key: "rentals", label: "Rentals", sub: "On the Move", color: "#84cc16", bg: "#f7fee7",
+    img: rentalsImg },
+  { key: "beaches", label: "Beaches", sub: "Sand & Salt Air", color: "#0ea5e9", bg: "#e0f2fe",
+    img: beachImg },
+  { key: "hidden-gems", label: "Hidden Gems", sub: "Off the Beaten Path", color: "#a855f7", bg: "#f3e8ff",
+    img: hiddenGemImg },
 ];
 
-const CITIES = [
-  { key: "manipal", label: "Manipal", lat: 13.3525, lon: 74.7934 },
-  { key: "mangalore", label: "Mangalore", lat: 12.9716, lon: 74.8631 },
-  { key: "bangalore", label: "Bangalore", lat: 12.9716, lon: 77.5946 },
-  { key: "mumbai", label: "Mumbai", lat: 19.0760, lon: 72.8777 },
-  { key: "delhi", label: "Delhi", lat: 28.7041, lon: 77.1025 },
-  { key: "hyderabad", label: "Hyderabad", lat: 17.3850, lon: 78.4867 },
-  { key: "pune", label: "Pune", lat: 18.5204, lon: 73.8567 },
-  { key: "chennai", label: "Chennai", lat: 13.0827, lon: 80.2707 },
-];
 
 
 const RADIUS_OPTIONS = [1, 2, 3, 5, 10];
@@ -41,15 +58,20 @@ const BUDGET_OPTIONS = [
   { label: "Under ₹5000", value: "$$$" },
 ];
 const SORT_OPTIONS = [
-  { label: "⭐ Rating", value: "rating" },
-  { label: "💬 Reviews", value: "reviews" },
-  { label: "🔤 Name", value: "name" },
+  { label: "Rating", value: "rating" },
+  { label: "Reviews", value: "reviews" },
+  { label: "Name", value: "name" },
 ];
-
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning.";
+  if (hour < 17) return "Good afternoon.";
+  return "Good evening.";
+}
 function Dashboard() {
   const [mood, setMood] = useState("");
-  const [city, setCity] = useState(CITIES[0]);
-  const [useGPS, setUseGPS] = useState(true);
+  const city = { label: "Manipal", lat: 13.3525, lon: 74.7934 };
+  const [useGPS, setUseGPS] = useState(false);
   const [gpsLocation, setGpsLocation] = useState(null);
   const [radius, setRadius] = useState(3);
   const [budget, setBudget] = useState("");
@@ -61,19 +83,30 @@ function Dashboard() {
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
-const [favourites, setFavourites] = useState([]);
+  const [favourites, setFavourites] = useState([]);
   const [activeTab, setActiveTab] = useState("explore");
+  const moodScrollRef = React.useRef(null);
+  const [minRating, setMinRating] = useState(0);
+  const [openDropdown, setOpenDropdown] = useState(null); // "radius" | "budget" | "open" | "rating" | "sort" | null
+  const [trending, setTrending] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+
+  const scrollMoods = (dir) => {
+    if (moodScrollRef.current) {
+      moodScrollRef.current.scrollBy({ left: dir * 320, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setGpsLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => setUseGPS(false)
-    );
+   navigator.geolocation.getCurrentPosition(
+  (pos) => {
+    console.log("Accuracy (meters):", pos.coords.accuracy);
+    setGpsLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+  },
+  () => setUseGPS(false)
+);
   }, []);
 
-
-
-  // ✅ ADD HERE (line 62)
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -83,272 +116,345 @@ const [favourites, setFavourites] = useState([]);
     })
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data)) setFavourites(data);
+        if (Array.isArray(data.favourites)) setFavourites(data.favourites);
       })
       .catch(console.error);
   }, []);
 
- // line 63 continues as normal
   const getLocation = () =>
     useGPS && gpsLocation ? gpsLocation : { lat: city.lat, lon: city.lon };
-
+  
+  useEffect(() => {
+  const loc = getLocation();
+  setTrendingLoading(true);
+  fetch(`http://localhost:5000/api/places/trending?lat=${loc.lat}&lon=${loc.lon}&radius=5`)
+    .then((res) => res.json())
+    .then((data) => setTrending(data.results || []))
+    .catch(console.error)
+    .finally(() => setTrendingLoading(false));
+}, [useGPS, gpsLocation]);
   const handleSearch = async () => {
-    if (!mood) return;
-    const loc = getLocation();
-    setLoading(true);
-    setError("");
-    setPlaces([]);
-    setSearched(true);
-    setActiveTab("explore");
+  if (!mood && !searchQuery.trim()) return;
+  const loc = getLocation();
+  setLoading(true);
+  setError("");
+  setPlaces([]);
+  setSearched(true);
+  setActiveTab("explore");
 
-    try {
-      const params = new URLSearchParams({
-        mood, lat: loc.lat, lon: loc.lon, radius,
-        ...(budget && { maxPrice: budget }),
-      });
-const res = await fetch(`http://localhost:5000/api/places?${params}`);      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setPlaces(data.results || []);
-    } catch (err) {
-      setError(err.message || "Failed to fetch places");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-// REPLACE your toggleFav with this
-const toggleFav = async (place) => {
   try {
+    const params = new URLSearchParams({
+      lat: loc.lat,
+      lon: loc.lon,
+      radius,
+      ...(mood && { mood }),
+      ...(searchQuery.trim() && { q: searchQuery.trim() }),
+      ...(budget && { maxPrice: budget }),
+    });
+    const res = await fetch(`http://localhost:5000/api/places?${params}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    setPlaces(data.results || []);
+  } catch (err) {
+    setError(err.message || "Failed to fetch places");
+  } finally {
+    setLoading(false);
+  }
+};
+
+const toggleFav = async (place) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
     const exists = favourites.find((p) => p.title === place.title);
 
-    if (exists) {
-      // ✅ Remove from local state
-      setFavourites((prev) => prev.filter((p) => p.title !== place.title));
+    setFavourites((prev) =>
+      exists ? prev.filter((p) => p.title !== place.title) : [...prev, place]
+    );
 
-      // ✅ Remove from DB
-      await fetch("http://localhost:5000/api/user/favourite", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ title: place.title }),
-      });
-
-    } else {
-      // ✅ Add to local state
-      setFavourites((prev) => [...prev, place]);
-
-      // ✅ Add to DB
-      await fetch("http://localhost:5000/api/user/favourite", {
+    try {
+      const res = await fetch("http://localhost:5000/api/user/favourites", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(place),
+        body: JSON.stringify({ place }),
       });
+      const data = await res.json();
+      if (Array.isArray(data.favourites)) setFavourites(data.favourites);
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error(error);
-  }
-};
+  };
 
   const isFav = (place) => favourites.some((p) => p.title === place.title);
 
-  const filterAndSort = (list) => {
-    let result = [...list];
-    if (openNow) {
-      result = result.filter((p) =>
-        p.open_state?.toLowerCase().includes("open")
-      );
-    }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.title?.toLowerCase().includes(q) ||
-          p.type?.toLowerCase().includes(q) ||
-          p.address?.toLowerCase().includes(q)
-      );
-    }
-    result.sort((a, b) => {
-      if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
-      if (sortBy === "reviews") return (b.reviews || 0) - (a.reviews || 0);
-      if (sortBy === "name") return a.title?.localeCompare(b.title);
-      return 0;
-    });
-    return result;
-  };
-
+const filterAndSort = (list) => {
+  let result = [...list];
+  if (openNow) {
+    result = result.filter((p) => p.open_state?.toLowerCase().includes("open"));
+  }
+  if (minRating > 0) {
+    result = result.filter((p) => (p.rating || 0) >= minRating);
+  }
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    result = result.filter(
+      (p) =>
+        p.title?.toLowerCase().includes(q) ||
+        p.type?.toLowerCase().includes(q) ||
+        p.address?.toLowerCase().includes(q)
+    );
+  }
+  result.sort((a, b) => {
+    if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+    if (sortBy === "reviews") return (b.reviews || 0) - (a.reviews || 0);
+    if (sortBy === "name") return a.title?.localeCompare(b.title);
+    return 0;
+  });
+  return result;
+};
   const displayPlaces = activeTab === "favourites"
     ? filterAndSort(favourites)
     : filterAndSort(places);
 
-  const activeLocation = useGPS && gpsLocation
-    ? "📡 Using your GPS location"
-    : `📍 ${city.label}`;
-
   return (
     <div>
       <Navbar />
-      <div className="header">
-          <h1>Discover Spots Made for Right Now
-</h1>
-
-        <p>
-    Find cafes, restaurants and hangout spots
-    <br />
-    tailored to how you feel.
+{/* HERO */}
+<div className="hero">
+  <div className="hero-location">
+    <span className="hero-location-dot" />
+    {useGPS && gpsLocation ? "Current Location" : city.label} · {radius} km radius
+  </div>
+  <h1 className="hero-title">
+    {getGreeting()}<br />
+    What are you in the mood for?
+  </h1>
+  <p className="hero-subtitle">
+    A quiet café, a late-night bite, or somewhere new to think.
+    Tell us the feeling — we'll find the place.
   </p>
-      
 
+  {/* FILTER PILLS ROW - now above the search bar */}
+ 
+  {/* SEARCH BAR */}
+  <div className="search-bar-row">
+    <div className="search-bar-wrap-main">
+      <Search size={18} className="search-icon" />
+      <input
+        type="text"
+        placeholder="Search cafes, study spots, hidden gems..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+      />
+      <button
+        className="discover-btn"
+        onClick={handleSearch}
+        disabled={(!mood && !searchQuery.trim()) || loading}
+      >
+        {loading ? "..." : "Discover"}
+      </button>
+    </div>
+  </div>
 </div>
 
-      <div className="container">
-        {/* Tabs */}
-        <div className="tabs">
-          <button
-            className={`tab ${activeTab === "explore" ? "active" : ""}`}
-            onClick={() => setActiveTab("explore")}
-          >
-            🔍 Explore
-          </button>
-          <button
-            className={`tab ${activeTab === "favourites" ? "active" : ""}`}
-            onClick={() => setActiveTab("favourites")}
-          >
-            ⭐ Favourites ({favourites.length})
-          </button>
-        </div>
 
+     
+      <div className="container">
         {activeTab === "explore" && (
           <>
-            {/* Location Bar */}
-            <div className="location-bar">
-              <span>{activeLocation}</span>
-              <div className="city-btns">
-                {gpsLocation && (
+          {/* Trending */}
+            {trendingLoading ? (
+              <div className="mood-section">
+                <p className="mood-eyebrow">00 — TRENDING</p>
+                <h2 className="mood-title">Trending nearby</h2>
+                <div className="loading">
+                  <div className="loading-spinner" />
+                  Finding what's popular...
+                </div>
+              </div>
+            ) : trending.length > 0 ? (
+              <div className="mood-section">
+                <div className="mood-heading-row">
+                  <div>
+                    <p className="mood-eyebrow">00 — TRENDING</p>
+                    <h2 className="mood-title">Trending nearby</h2>
+                    <p className="mood-subtitle">The most talked-about places around you right now.</p>
+                  </div>
+                </div>
+                <div className="mood-grid">
+                  {trending.map((place, i) => (
+                    <div
+                      key={i}
+                      className="trending-card"
+                      style={{ backgroundImage: `url(${place.thumbnail})` }}
+                      onClick={() => setSelectedPlace(place)}
+                    >
+                      <span className="trending-card-overlay">
+                        <span className="trending-card-rating">★ {place.rating} · {place.reviews} reviews</span>
+                        <span className="trending-card-name">{place.title}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+          
+            {/* Mood */}
+            <div className="mood-section">
+              <div className="mood-heading-row">
+                <div>
+                  <p className="mood-eyebrow">01 — MOODS</p>
+                  <h2 className="mood-title">Choose your mood</h2>
+                  <p className="mood-subtitle">Discover places that match how you're feeling today.</p>
+                </div>
+                <div className="mood-nav-arrows">
+                  <button className="mood-arrow" onClick={() => scrollMoods(-1)}>‹</button>
+                  <button className="mood-arrow" onClick={() => scrollMoods(1)}>›</button>
+                </div>
+              </div>
+              <div className="mood-grid" ref={moodScrollRef}>
+                {MOODS.map((m) => (
                   <button
-                    className={`city-btn ${useGPS ? "active" : ""}`}
-                    onClick={() => setUseGPS(true)}
+                    key={m.key}
+                    className={`mood-card ${mood === m.key ? "active" : ""}`}
+                    style={{ backgroundImage: `url(${m.img})` }}
+                    onClick={() => setMood(m.key)}
                   >
-                    GPS
-                  </button>
-                )}
-                {CITIES.map((c) => (
-                  <button
-                    key={c.key}
-                    className={`city-btn ${!useGPS && city.key === c.key ? "active" : ""}`}
-                    onClick={() => { setCity(c); setUseGPS(false); }}
-                  >
-                    {c.label}
+                    <span className="mood-card-overlay">
+                      <span className="mood-card-sub">{m.sub}</span>
+                      <span className="mood-card-label">{m.label}</span>
+                    </span>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Mood */}
-            <p className="section-title">What's your mood?</p>
-            <div className="mood-grid">
-              {MOODS.map((m) => (
-                <button
-                  key={m.key}
-                  className={`mood-btn ${mood === m.key ? "active" : ""}`}
-                  style={{ "--color": m.color, "--bg": m.bg }}
-                  onClick={() => setMood(m.key)}
-                >
-                  <span className="emoji">{m.emoji}</span>
-                  <span className="label">{m.label}</span>
-                  <span className="sub">{m.sub}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Filters */}
-            <div className="filters">
-              <div>
-                <p className="section-title">Radius</p>
-                <div className="filter-pills">
-                  {RADIUS_OPTIONS.map((r) => (
-                    <button
-                      key={r}
-                      className={`pill ${radius === r ? "active" : ""}`}
-                      onClick={() => setRadius(r)}
-                    >
-                      {r} km
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="section-title">Budget</p>
-                <div className="filter-pills">
-                  {BUDGET_OPTIONS.map((b) => (
-                    <button
-                      key={b.value}
-                      className={`pill ${budget === b.value ? "active" : ""}`}
-                      onClick={() => setBudget(b.value)}
-                    >
-                      {b.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="toggle-row">
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={openNow}
-                    onChange={(e) => setOpenNow(e.target.checked)}
-                  />
-                  <span className="toggle-slider" />
-                </label>
-                <span className="toggle-label">🕐 Open Now only</span>
-              </div>
-            </div>
-
+           
             {/* Search Button */}
             <button
               className="search-btn"
               onClick={handleSearch}
               disabled={!mood || loading}
             >
-              {loading ? "Searching..." : "🔍 Find Places Near Me"}
+              {loading ? "Searching..." : "Find Places Near Me"}
             </button>
           </>
         )}
+        {(activeTab === "explore" || activeTab === "favourites") && (
+  <div className="results-heading-row">
+    <p className="mood-eyebrow">04 — ALL PLACES</p>
+    <h2 className="mood-title">Within a short walk from you</h2>
 
-        {/* Search + Sort bar — shown after results load */}
-        {(places.length > 0 || activeTab === "favourites") && (
-          <>
-            <div className="search-bar-wrap">
-              <span className="search-icon">🔎</span>
-              <input
-                type="text"
-                placeholder="Search by name, type, area..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="sort-row">
-              <span>Sort by:</span>
-              {SORT_OPTIONS.map((s) => (
-                <button
-                  key={s.value}
-                  className={`pill ${sortBy === s.value ? "active" : ""}`}
-                  onClick={() => setSortBy(s.value)}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </>
+    <div className="filter-pills-row">
+      {/* RADIUS */}
+      <div className="filter-dropdown-wrap">
+        <button
+          className={`filter-dropdown-pill ${openDropdown === "radius" ? "open" : ""}`}
+          onClick={() => setOpenDropdown(openDropdown === "radius" ? null : "radius")}
+        >
+          Within {radius} km <span className="chevron">▾</span>
+        </button>
+        {openDropdown === "radius" && (
+          <div className="filter-dropdown-menu">
+            {RADIUS_OPTIONS.map((r) => (
+              <button
+                key={r}
+                className={radius === r ? "active" : ""}
+                onClick={() => { setRadius(r); setOpenDropdown(null); }}
+              >
+                {r} km
+              </button>
+            ))}
+          </div>
         )}
+      </div>
 
+      {/* BUDGET */}
+      <div className="filter-dropdown-wrap">
+        <button
+          className={`filter-dropdown-pill ${openDropdown === "budget" ? "open" : ""}`}
+          onClick={() => setOpenDropdown(openDropdown === "budget" ? null : "budget")}
+        >
+          {BUDGET_OPTIONS.find((b) => b.value === budget)?.label || "Any budget"} <span className="chevron">▾</span>
+        </button>
+        {openDropdown === "budget" && (
+          <div className="filter-dropdown-menu">
+            {BUDGET_OPTIONS.map((b) => (
+              <button
+                key={b.value}
+                className={budget === b.value ? "active" : ""}
+                onClick={() => { setBudget(b.value); setOpenDropdown(null); }}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* OPEN NOW - simple toggle pill, no dropdown */}
+      <button
+        className={`filter-dropdown-pill toggle-only ${openNow ? "active" : ""}`}
+        onClick={() => setOpenNow(!openNow)}
+      >
+        Open now
+      </button>
+
+      {/* RATING */}
+      <div className="filter-dropdown-wrap">
+        <button
+          className={`filter-dropdown-pill ${openDropdown === "rating" ? "open" : ""}`}
+          onClick={() => setOpenDropdown(openDropdown === "rating" ? null : "rating")}
+        >
+          {minRating > 0 ? `${minRating}★ & above` : "Any rating"} <span className="chevron">▾</span>
+        </button>
+        {openDropdown === "rating" && (
+          <div className="filter-dropdown-menu">
+            {[0, 3.5, 4.0, 4.5].map((r) => (
+              <button
+                key={r}
+                className={minRating === r ? "active" : ""}
+                onClick={() => { setMinRating(r); setOpenDropdown(null); }}
+              >
+                {r === 0 ? "Any rating" : `${r}★ & above`}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* SORT */}
+      <div className="filter-dropdown-wrap">
+        <button
+          className={`filter-dropdown-pill ${openDropdown === "sort" ? "open" : ""}`}
+          onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
+        >
+          Sort: {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || "Recommended"} <span className="chevron">▾</span>
+        </button>
+        {openDropdown === "sort" && (
+          <div className="filter-dropdown-menu">
+            {SORT_OPTIONS.map((s) => (
+              <button
+                key={s.value}
+                className={sortBy === s.value ? "active" : ""}
+                onClick={() => { setSortBy(s.value); setOpenDropdown(null); }}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+      
         {/* States */}
         {loading && (
           <div className="loading">
@@ -356,68 +462,67 @@ const toggleFav = async (place) => {
             Finding places for you...
           </div>
         )}
-        {error && <div className="error">❌ {error}</div>}
+        {error && <div className="error">{error}</div>}
         {searched && !loading && displayPlaces.length === 0 && !error && (
           <div className="empty">
             {activeTab === "favourites"
-              ? "⭐ No favourites yet — start exploring!"
-              : "😕 No places found. Try increasing the radius!"}
+              ? "No favourites yet — start exploring!"
+              : "No places found. Try increasing the radius!"}
           </div>
         )}
 
         {/* Results */}
-       {/* Results */}
-{displayPlaces.length > 0 && (
-  <>
-    <p className="results-header">
-      {activeTab === "favourites"
-        ? `⭐ ${displayPlaces.length} saved places`
-        : `🎯 ${displayPlaces.length} places found`}
-    </p>
-    <div className="results-grid">
-      {displayPlaces.map((place, i) => (
-        <div
-          className="place-card"
-          key={i}
-          style={{ animationDelay: `${i * 50}ms` }}
-          onClick={() => setSelectedPlace(place)}
-        >
-          <div className="place-img-wrap">
-            <img
-              src={place.thumbnail}
-              alt={place.title}
-              className="place-img"
-              onError={(e) => { e.target.src = "https://placehold.co/400x200?text=No+Image"; }}
-            />
-            <div className="place-img-overlay">
-              <span className="place-name-overlay">{place.title}</span>
-              {place.rating && <span className="rating-overlay">⭐ {place.rating}</span>}
+        {displayPlaces.length > 0 && (
+          <>
+            <p className="results-header">
+              {activeTab === "favourites"
+                ? `${displayPlaces.length} saved places`
+                : `${displayPlaces.length} places found`}
+            </p>
+            <div className="results-grid">
+              {displayPlaces.map((place, i) => (
+                <div
+                  className="place-card"
+                  key={i}
+                  style={{ animationDelay: `${i * 50}ms` }}
+                  onClick={() => setSelectedPlace(place)}
+                >
+                  <div className="place-img-wrap">
+                    <img
+                      src={place.thumbnail}
+                      alt={place.title}
+                      className="place-img"
+                      onError={(e) => { e.target.src = "https://placehold.co/400x200?text=No+Image"; }}
+                    />
+                    <div className="place-img-overlay">
+                      <span className="place-name-overlay">{place.title}</span>
+                      {place.rating && <span className="rating-overlay">{place.rating}</span>}
+                    </div>
+                  </div>
+                  <div className="place-info">
+                    <div className="place-type">{place.type}</div>
+                    <div className="place-address">{place.address}</div>
+                    <div className="place-meta">
+                      {place.reviews && <span className="reviews">({place.reviews} reviews)</span>}
+                      {place.open_state && (
+                        <span className={`open-badge ${place.open_state.toLowerCase().includes("open") ? "open" : "closed"}`}>
+                          {place.open_state}
+                        </span>
+                      )}
+                      {place.price && <span className="price-badge">{place.price}</span>}
+                      <button
+                        className="fav-btn"
+                        onClick={(e) => { e.stopPropagation(); toggleFav(place); }}
+                      >
+                        <Heart size={18} fill={isFav(place) ? "#e0433f" : "none"} color={isFav(place) ? "#e0433f" : "#999"} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="place-info">
-            <div className="place-type">{place.type}</div>
-            <div className="place-address">📍 {place.address}</div>
-            <div className="place-meta">
-              {place.reviews && <span className="reviews">({place.reviews} reviews)</span>}
-              {place.open_state && (
-                <span className={`open-badge ${place.open_state.toLowerCase().includes("open") ? "open" : "closed"}`}>
-                  {place.open_state}
-                </span>
-              )}
-              {place.price && <span className="price-badge">{place.price}</span>}
-              <button
-                className="fav-btn"
-                onClick={(e) => { e.stopPropagation(); toggleFav(place); }}
-              >
-                {isFav(place) ? "❤️" : "🤍"}
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  </>
-)}
+          </>
+        )}
       </div>
 
       {/* Place Detail Modal */}
@@ -438,27 +543,27 @@ const toggleFav = async (place) => {
                   style={{ fontSize: "24px" }}
                   onClick={() => toggleFav(selectedPlace)}
                 >
-                  {isFav(selectedPlace) ? "❤️" : "🤍"}
+                  <Heart size={22} fill={isFav(selectedPlace) ? "#e0433f" : "none"} color={isFav(selectedPlace) ? "#e0433f" : "#999"} />
                 </button>
               </div>
 
               {selectedPlace.rating && (
-                <div className="modal-row">⭐ {selectedPlace.rating} · {selectedPlace.reviews} reviews</div>
+                <div className="modal-row">{selectedPlace.rating} · {selectedPlace.reviews} reviews</div>
               )}
               {selectedPlace.address && (
-                <div className="modal-row">📍 {selectedPlace.address}</div>
+                <div className="modal-row">{selectedPlace.address}</div>
               )}
               {selectedPlace.open_state && (
-                <div className="modal-row">🕐 {selectedPlace.open_state}</div>
+                <div className="modal-row">{selectedPlace.open_state}</div>
               )}
               {selectedPlace.price && (
-                <div className="modal-row">💰 {selectedPlace.price}</div>
+                <div className="modal-row">{selectedPlace.price}</div>
               )}
               {selectedPlace.phone && (
-                <div className="modal-row">📞 {selectedPlace.phone}</div>
+                <div className="modal-row">{selectedPlace.phone}</div>
               )}
               {selectedPlace.description && (
-                <div className="modal-row">📝 {selectedPlace.description}</div>
+                <div className="modal-row">{selectedPlace.description}</div>
               )}
 
               <div className="modal-actions">
@@ -469,7 +574,7 @@ const toggleFav = async (place) => {
                   className="modal-btn primary"
                   style={{ textDecoration: "none", textAlign: "center" }}
                 >
-                  🗺️ Get Directions
+                  Get Directions
                 </a>
                 <button
                   className="modal-btn secondary"
@@ -486,37 +591,18 @@ const toggleFav = async (place) => {
   );
 }
 export default function App() {
-
   return (
-
     <BrowserRouter>
-
       <Routes>
-
-        <Route
-          path="/"
-          element={<LandingPage />}
-        />
-
-        <Route
-          path="/dashboard"
-          element={<Dashboard />}
-        />
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        <Route
-          path="/signup"
-          element={<Signup />}
-        />
-
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/collections" element={<Collections />} />
+<Route path="/cities" element={<Cities />} />
+<Route path="/journal" element={<Journal />} />
+        
       </Routes>
-
     </BrowserRouter>
-    
-
   );
 }
