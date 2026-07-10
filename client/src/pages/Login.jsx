@@ -7,7 +7,7 @@ import "./Auth.css";
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   });
 
@@ -43,9 +43,9 @@ function Login() {
         <p>Login to continue exploring places around you</p>
 
         <input
-          type="email"
-          name="email"
-          placeholder="Email"
+          type="text"
+          name="username"
+          placeholder="Username"
           onChange={handleChange}
         />
 

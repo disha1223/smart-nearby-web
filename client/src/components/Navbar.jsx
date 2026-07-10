@@ -1,16 +1,29 @@
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Compass, Heart, User } from "lucide-react";
+import { Compass } from "lucide-react";
 import "./Navbar.css";
 
 function Navbar() {
   const username = localStorage.getItem("username");
   const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("username");
     window.location.href = "/";
   };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <nav className="navbar">
@@ -27,10 +40,22 @@ function Navbar() {
           <Link to="/journal" className={location.pathname === "/journal" ? "active" : ""}>Journal</Link>
         </div>
 
-        
-
-         
-        
+        {username ? (
+          <div className="nav-account-wrapper" ref={menuRef}>
+            <button className="nav-account-btn" onClick={() => setOpen(!open)}>
+              <span>{username}</span>
+            </button>
+            {open && (
+              <div className="nav-account-dropdown">
+                <button onClick={handleLogout}>Logout</button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link to="/login" className="nav-account-btn">
+            <span>Sign In</span>
+          </Link>
+        )}
       </div>
     </nav>
   );

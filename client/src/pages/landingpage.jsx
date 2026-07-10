@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { MapPin, Search, SlidersHorizontal, Star, ArrowRight, UtensilsCrossed, Coffee } from "lucide-react";
+import { MapPin, Search, SlidersHorizontal, Star, ArrowRight, UtensilsCrossed, Coffee, Compass } from "lucide-react";
 import Navbar from "../components/Navbar";
 import "./landingpage.css";
 
@@ -27,12 +27,43 @@ const BUILDINGS = [
   { top: "18%", left: "26%", w: 24, h: 18, r: 3 },    { top: "44%", left: "64%", w: 32, h: 22, r: -5 },
 ];
 
+const GUIDES = [
+  {
+    title: "Best cafés to study",
+    desc: "Quiet corners, strong Wi-Fi, endless refills.",
+    count: "18 places",
+    img: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=800&q=80",
+  },
+  {
+    title: "Late-night food",
+    desc: "For the 1 AM cravings — kitchens still open.",
+    count: "24 places",
+    img: "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?w=800&q=80",
+  },
+  {
+    title: "Hidden gems",
+    desc: "Loved by locals, missed by everyone else.",
+    count: "12 places",
+    img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&q=80",
+  },
+  {
+    title: "Weekend brunch",
+    desc: "Slow mornings, sunshine, and a good coffee.",
+    count: "16 places",
+    img: "https://images.unsplash.com/photo-1496412705862-e0088f16f791?w=800&q=80",
+  },
+];
+
 function LandingPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
   const handleDiscover = () => {
-    navigate("/dashboard");
+    if (query.trim()) {
+      navigate(`/dashboard?q=${encodeURIComponent(query.trim())}`);
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -67,11 +98,8 @@ function LandingPage() {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleDiscover()}
             />
-            <span className="search-or">or</span>
-            <button className="filters-btn" onClick={handleDiscover}>
-              <SlidersHorizontal size={15} />
-              Filters
-            </button>
+            <span className="search-or"></span>
+            
             <button className="discover-btn" onClick={handleDiscover}>
               Discover <ArrowRight size={16} />
             </button>
@@ -138,6 +166,27 @@ function LandingPage() {
         </div>
       </section>
 
+      <section className="landing2-guides">
+        <h2 className="guides-heading">Editorial guides, hand-picked by locals</h2>
+        <div className="guides-grid">
+          {GUIDES.map((g) => (
+            <div
+              key={g.title}
+              className="guide-card"
+              style={{ backgroundImage: `url(${g.img})` }}
+              onClick={() => navigate("/dashboard")}
+            >
+              <span className="guide-arrow"><ArrowRight size={16} /></span>
+              <div className="guide-card-overlay">
+                <span className="guide-count">{g.count}</span>
+                <h3 className="guide-title">{g.title}</h3>
+                <p className="guide-desc">{g.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="landing2-cta">
         <h2>Ready to find your next favourite spot?</h2>
         <p>Sign up free and start exploring places that match how you feel.</p>
@@ -145,6 +194,51 @@ function LandingPage() {
           Get started <ArrowRight size={16} />
         </Link>
       </section>
+
+      {/* FOOTER */}
+      <footer className="landing2-footer">
+        <div className="footer-grid">
+          <div className="footer-col footer-brand-col">
+            <div className="footer-brand">
+              <span className="footer-logo-badge"><Compass size={16} /></span>
+              <span className="footer-logo-text">Moodly</span>
+            </div>
+            <p className="footer-tagline">Made for the moments in between.</p>
+            <p className="footer-copyright">© {new Date().getFullYear()} Moodly. All rights reserved.</p>
+          </div>
+
+          <div className="footer-col">
+            <h4>Company</h4>
+            <Link to="/">About Us</Link>
+            <Link to="/">How it Works</Link>
+            <Link to="/">Team</Link>
+          </div>
+
+          <div className="footer-col">
+            <h4>Explore</h4>
+            <Link to="/dashboard">Discover</Link>
+            <Link to="/collections">Collections</Link>
+            <Link to="/cities">Cities</Link>
+            <Link to="/journal">Journal</Link>
+          </div>
+
+          <div className="footer-col">
+            <h4>Legal</h4>
+            <Link to="/">Help & FAQ</Link>
+            <Link to="/">Contact Us</Link>
+            <Link to="/">Report an Issue</Link>
+          </div>
+
+          <div className="footer-col">
+            <h4>Social Links</h4>
+            <div className="footer-socials">
+              <button aria-label="Instagram">Instagram</button>
+              <button aria-label="Twitter">Twitter</button>
+              <button aria-label="LinkedIn">LinkedIn</button>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

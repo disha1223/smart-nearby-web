@@ -4,6 +4,8 @@ import {
   BrowserRouter,
   Routes,
   Route,
+  Navigate,
+  useSearchParams,
 } from "react-router-dom";
 
 import Signup from "./pages/Signup";
@@ -16,7 +18,7 @@ import Cities from "./pages/Cities";
 import Journal from "./pages/journal";
 
 import studyImg from "./pages/images/study.jpeg";
-import hangoutImg from "./pages/images/hangg.jpeg";   // adjust filename to match yours
+import hangoutImg from "./pages/images/hangg.jpeg";
 import quickBiteImg from "./pages/images/bite.jpeg";
 import budgetImg from "./pages/images/hang.jpeg";
 import nightlifeImg from "./pages/images/club.jpeg";
@@ -25,30 +27,25 @@ import fitnessImg from "./pages/images/gym.jpeg";
 import rentalsImg from "./pages/images/rent.jpeg";
 import beachImg from "./pages/images/beach.jpeg";
 import hiddenGemImg from "./pages/images/hidden.jpeg";
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem("token");
+  const isValid = token && token !== "undefined" && token !== "null";
+  return isValid ? children : <Navigate to="/login" replace />;
+}
+
 const MOODS = [
-  { key: "study", label: "Study", sub: "Quiet & Focused", color: "#667eea", bg: "#e0e4ff",
-    img: studyImg },
-  { key: "hangout", label: "Hangout", sub: "Rooftops & Long Tables", color: "#ec4899", bg: "#fce7f3",
-    img: hangoutImg },
-  { key: "quick-bite", label: "Quick Bite", sub: "In a Hurry", color: "#f59e0b", bg: "#fef3c7",
-    img: quickBiteImg },
-  { key: "budget", label: "Budget", sub: "Easy on the Wallet", color: "#10b981", bg: "#d1fae5",
-    img: budgetImg },
-  { key: "nightlife", label: "Nightlife", sub: "After Dark", color: "#ec4899", bg: "#fdf2f8",
-    img: nightlifeImg },
-  { key: "gaming", label: "Gaming", sub: "Play Together", color: "#8b5cf6", bg: "#f5f3ff",
-    img: gamingImg },
-  { key: "fitness", label: "Fitness", sub: "Move Your Body", color: "#06b6d4", bg: "#ecfeff",
-    img: fitnessImg },
-  { key: "rentals", label: "Rentals", sub: "On the Move", color: "#84cc16", bg: "#f7fee7",
-    img: rentalsImg },
-  { key: "beaches", label: "Beaches", sub: "Sand & Salt Air", color: "#0ea5e9", bg: "#e0f2fe",
-    img: beachImg },
-  { key: "hidden-gems", label: "Hidden Gems", sub: "Off the Beaten Path", color: "#a855f7", bg: "#f3e8ff",
-    img: hiddenGemImg },
+  { key: "study", label: "Study", sub: "Quiet & Focused", color: "#667eea", bg: "#e0e4ff", img: studyImg },
+  { key: "hangout", label: "Hangout", sub: "Rooftops & Long Tables", color: "#ec4899", bg: "#fce7f3", img: hangoutImg },
+  { key: "quick-bite", label: "Quick Bite", sub: "In a Hurry", color: "#f59e0b", bg: "#fef3c7", img: quickBiteImg },
+  { key: "budget", label: "Budget", sub: "Easy on the Wallet", color: "#10b981", bg: "#d1fae5", img: budgetImg },
+  { key: "nightlife", label: "Nightlife", sub: "After Dark", color: "#ec4899", bg: "#fdf2f8", img: nightlifeImg },
+  { key: "gaming", label: "Gaming", sub: "Play Together", color: "#8b5cf6", bg: "#f5f3ff", img: gamingImg },
+  { key: "fitness", label: "Fitness", sub: "Move Your Body", color: "#06b6d4", bg: "#ecfeff", img: fitnessImg },
+  { key: "rentals", label: "Rentals", sub: "On the Move", color: "#84cc16", bg: "#f7fee7", img: rentalsImg },
+  { key: "beaches", label: "Beaches", sub: "Sand & Salt Air", color: "#0ea5e9", bg: "#e0f2fe", img: beachImg },
+  { key: "hidden-gems", label: "Hidden Gems", sub: "Off the Beaten Path", color: "#a855f7", bg: "#f3e8ff", img: hiddenGemImg },
 ];
-
-
 
 const RADIUS_OPTIONS = [1, 2, 3, 5, 10];
 const BUDGET_OPTIONS = [
@@ -62,12 +59,14 @@ const SORT_OPTIONS = [
   { label: "Reviews", value: "reviews" },
   { label: "Name", value: "name" },
 ];
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning.";
   if (hour < 17) return "Good afternoon.";
   return "Good evening.";
 }
+
 function Dashboard() {
   const [mood, setMood] = useState("");
   const city = { label: "Manipal", lat: 13.3525, lon: 74.7934 };
@@ -87,9 +86,27 @@ function Dashboard() {
   const [activeTab, setActiveTab] = useState("explore");
   const moodScrollRef = React.useRef(null);
   const [minRating, setMinRating] = useState(0);
-  const [openDropdown, setOpenDropdown] = useState(null); // "radius" | "budget" | "open" | "rating" | "sort" | null
+  const [openDropdown, setOpenDropdown] = useState(null);
   const [trending, setTrending] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+
+  const [searchParams] = useSearchParams();
+  const initialSearchDone = React.useRef(false);
+
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && !initialSearchDone.current) {
+      setSearchQuery(q);
+      initialSearchDone.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialSearchDone.current && searchQuery) {
+      handleSearch();
+      initialSearchDone.current = false;
+    }
+  }, [searchQuery]);
 
   const scrollMoods = (dir) => {
     if (moodScrollRef.current) {
@@ -98,13 +115,13 @@ function Dashboard() {
   };
 
   useEffect(() => {
-   navigator.geolocation.getCurrentPosition(
-  (pos) => {
-    console.log("Accuracy (meters):", pos.coords.accuracy);
-    setGpsLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-  },
-  () => setUseGPS(false)
-);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        console.log("Accuracy (meters):", pos.coords.accuracy);
+        setGpsLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+      },
+      () => setUseGPS(false)
+    );
   }, []);
 
   useEffect(() => {
@@ -123,46 +140,47 @@ function Dashboard() {
 
   const getLocation = () =>
     useGPS && gpsLocation ? gpsLocation : { lat: city.lat, lon: city.lon };
-  
+
   useEffect(() => {
-  const loc = getLocation();
-  setTrendingLoading(true);
-  fetch(`http://localhost:5000/api/places/trending?lat=${loc.lat}&lon=${loc.lon}&radius=5`)
-    .then((res) => res.json())
-    .then((data) => setTrending(data.results || []))
-    .catch(console.error)
-    .finally(() => setTrendingLoading(false));
-}, [useGPS, gpsLocation]);
+    const loc = getLocation();
+    setTrendingLoading(true);
+    fetch(`http://localhost:5000/api/places/trending?lat=${loc.lat}&lon=${loc.lon}&radius=5`)
+      .then((res) => res.json())
+      .then((data) => setTrending(data.results || []))
+      .catch(console.error)
+      .finally(() => setTrendingLoading(false));
+  }, [useGPS, gpsLocation]);
+
   const handleSearch = async () => {
-  if (!mood && !searchQuery.trim()) return;
-  const loc = getLocation();
-  setLoading(true);
-  setError("");
-  setPlaces([]);
-  setSearched(true);
-  setActiveTab("explore");
+    if (!mood && !searchQuery.trim()) return;
+    const loc = getLocation();
+    setLoading(true);
+    setError("");
+    setPlaces([]);
+    setSearched(true);
+    setActiveTab("explore");
 
-  try {
-    const params = new URLSearchParams({
-      lat: loc.lat,
-      lon: loc.lon,
-      radius,
-      ...(mood && { mood }),
-      ...(searchQuery.trim() && { q: searchQuery.trim() }),
-      ...(budget && { maxPrice: budget }),
-    });
-    const res = await fetch(`http://localhost:5000/api/places?${params}`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-    setPlaces(data.results || []);
-  } catch (err) {
-    setError(err.message || "Failed to fetch places");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      const params = new URLSearchParams({
+        lat: loc.lat,
+        lon: loc.lon,
+        radius,
+        ...(mood && { mood }),
+        ...(searchQuery.trim() && { q: searchQuery.trim() }),
+        ...(budget && { maxPrice: budget }),
+      });
+      const res = await fetch(`http://localhost:5000/api/places?${params}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPlaces(data.results || []);
+    } catch (err) {
+      setError(err.message || "Failed to fetch places");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const toggleFav = async (place) => {
+  const toggleFav = async (place) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -190,31 +208,32 @@ const toggleFav = async (place) => {
 
   const isFav = (place) => favourites.some((p) => p.title === place.title);
 
-const filterAndSort = (list) => {
-  let result = [...list];
-  if (openNow) {
-    result = result.filter((p) => p.open_state?.toLowerCase().includes("open"));
-  }
-  if (minRating > 0) {
-    result = result.filter((p) => (p.rating || 0) >= minRating);
-  }
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase();
-    result = result.filter(
-      (p) =>
-        p.title?.toLowerCase().includes(q) ||
-        p.type?.toLowerCase().includes(q) ||
-        p.address?.toLowerCase().includes(q)
-    );
-  }
-  result.sort((a, b) => {
-    if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
-    if (sortBy === "reviews") return (b.reviews || 0) - (a.reviews || 0);
-    if (sortBy === "name") return a.title?.localeCompare(b.title);
-    return 0;
-  });
-  return result;
-};
+  const filterAndSort = (list) => {
+    let result = [...list];
+    if (openNow) {
+      result = result.filter((p) => p.open_state?.toLowerCase().includes("open"));
+    }
+    if (minRating > 0) {
+      result = result.filter((p) => (p.rating || 0) >= minRating);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.title?.toLowerCase().includes(q) ||
+          p.type?.toLowerCase().includes(q) ||
+          p.address?.toLowerCase().includes(q)
+      );
+    }
+    result.sort((a, b) => {
+      if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
+      if (sortBy === "reviews") return (b.reviews || 0) - (a.reviews || 0);
+      if (sortBy === "name") return a.title?.localeCompare(b.title);
+      return 0;
+    });
+    return result;
+  };
+
   const displayPlaces = activeTab === "favourites"
     ? filterAndSort(favourites)
     : filterAndSort(places);
@@ -222,51 +241,44 @@ const filterAndSort = (list) => {
   return (
     <div>
       <Navbar />
-{/* HERO */}
-<div className="hero">
-  <div className="hero-location">
-    <span className="hero-location-dot" />
-    {useGPS && gpsLocation ? "Current Location" : city.label} · {radius} km radius
-  </div>
-  <h1 className="hero-title">
-    {getGreeting()}<br />
-    What are you in the mood for?
-  </h1>
-  <p className="hero-subtitle">
-    A quiet café, a late-night bite, or somewhere new to think.
-    Tell us the feeling — we'll find the place.
-  </p>
+      <div className="hero">
+        <div className="hero-location">
+          <span className="hero-location-dot" />
+          {useGPS && gpsLocation ? "Current Location" : city.label} · {radius} km radius
+        </div>
+        <h1 className="hero-title">
+          {getGreeting()}<br />
+          What are you in the mood for?
+        </h1>
+        <p className="hero-subtitle">
+          A quiet café, a late-night bite, or somewhere new to think.
+          Tell us the feeling — we'll find the place.
+        </p>
 
-  {/* FILTER PILLS ROW - now above the search bar */}
- 
-  {/* SEARCH BAR */}
-  <div className="search-bar-row">
-    <div className="search-bar-wrap-main">
-      <Search size={18} className="search-icon" />
-      <input
-        type="text"
-        placeholder="Search cafes, study spots, hidden gems..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-      />
-      <button
-        className="discover-btn"
-        onClick={handleSearch}
-        disabled={(!mood && !searchQuery.trim()) || loading}
-      >
-        {loading ? "..." : "Discover"}
-      </button>
-    </div>
-  </div>
-</div>
+        <div className="search-bar-row">
+          <div className="search-bar-wrap-main">
+            <Search size={18} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search cafes, study spots, hidden gems..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            />
+            <button
+              className="discover-btn"
+              onClick={handleSearch}
+              disabled={(!mood && !searchQuery.trim()) || loading}
+            >
+              {loading ? "..." : "Discover"}
+            </button>
+          </div>
+        </div>
+      </div>
 
-
-     
       <div className="container">
         {activeTab === "explore" && (
           <>
-          {/* Trending */}
             {trendingLoading ? (
               <div className="mood-section">
                 <p className="mood-eyebrow">00 — TRENDING</p>
@@ -303,8 +315,6 @@ const filterAndSort = (list) => {
               </div>
             ) : null}
 
-          
-            {/* Mood */}
             <div className="mood-section">
               <div className="mood-heading-row">
                 <div>
@@ -334,8 +344,6 @@ const filterAndSort = (list) => {
               </div>
             </div>
 
-           
-            {/* Search Button */}
             <button
               className="search-btn"
               onClick={handleSearch}
@@ -346,116 +354,109 @@ const filterAndSort = (list) => {
           </>
         )}
         {(activeTab === "explore" || activeTab === "favourites") && (
-  <div className="results-heading-row">
-    <p className="mood-eyebrow">04 — ALL PLACES</p>
-    <h2 className="mood-title">Within a short walk from you</h2>
+          <div className="results-heading-row">
+            <p className="mood-eyebrow">04 — ALL PLACES</p>
+            <h2 className="mood-title">Within a short walk from you</h2>
 
-    <div className="filter-pills-row">
-      {/* RADIUS */}
-      <div className="filter-dropdown-wrap">
-        <button
-          className={`filter-dropdown-pill ${openDropdown === "radius" ? "open" : ""}`}
-          onClick={() => setOpenDropdown(openDropdown === "radius" ? null : "radius")}
-        >
-          Within {radius} km <span className="chevron">▾</span>
-        </button>
-        {openDropdown === "radius" && (
-          <div className="filter-dropdown-menu">
-            {RADIUS_OPTIONS.map((r) => (
+            <div className="filter-pills-row">
+              <div className="filter-dropdown-wrap">
+                <button
+                  className={`filter-dropdown-pill ${openDropdown === "radius" ? "open" : ""}`}
+                  onClick={() => setOpenDropdown(openDropdown === "radius" ? null : "radius")}
+                >
+                  Within {radius} km <span className="chevron">▾</span>
+                </button>
+                {openDropdown === "radius" && (
+                  <div className="filter-dropdown-menu">
+                    {RADIUS_OPTIONS.map((r) => (
+                      <button
+                        key={r}
+                        className={radius === r ? "active" : ""}
+                        onClick={() => { setRadius(r); setOpenDropdown(null); }}
+                      >
+                        {r} km
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="filter-dropdown-wrap">
+                <button
+                  className={`filter-dropdown-pill ${openDropdown === "budget" ? "open" : ""}`}
+                  onClick={() => setOpenDropdown(openDropdown === "budget" ? null : "budget")}
+                >
+                  {BUDGET_OPTIONS.find((b) => b.value === budget)?.label || "Any budget"} <span className="chevron">▾</span>
+                </button>
+                {openDropdown === "budget" && (
+                  <div className="filter-dropdown-menu">
+                    {BUDGET_OPTIONS.map((b) => (
+                      <button
+                        key={b.value}
+                        className={budget === b.value ? "active" : ""}
+                        onClick={() => { setBudget(b.value); setOpenDropdown(null); }}
+                      >
+                        {b.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
-                key={r}
-                className={radius === r ? "active" : ""}
-                onClick={() => { setRadius(r); setOpenDropdown(null); }}
+                className={`filter-dropdown-pill toggle-only ${openNow ? "active" : ""}`}
+                onClick={() => setOpenNow(!openNow)}
               >
-                {r} km
+                Open now
               </button>
-            ))}
+
+              <div className="filter-dropdown-wrap">
+                <button
+                  className={`filter-dropdown-pill ${openDropdown === "rating" ? "open" : ""}`}
+                  onClick={() => setOpenDropdown(openDropdown === "rating" ? null : "rating")}
+                >
+                  {minRating > 0 ? `${minRating}★ & above` : "Any rating"} <span className="chevron">▾</span>
+                </button>
+                {openDropdown === "rating" && (
+                  <div className="filter-dropdown-menu">
+                    {[0, 3.5, 4.0, 4.5].map((r) => (
+                      <button
+                        key={r}
+                        className={minRating === r ? "active" : ""}
+                        onClick={() => { setMinRating(r); setOpenDropdown(null); }}
+                      >
+                        {r === 0 ? "Any rating" : `${r}★ & above`}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="filter-dropdown-wrap">
+                <button
+                  className={`filter-dropdown-pill ${openDropdown === "sort" ? "open" : ""}`}
+                  onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
+                >
+                  Sort: {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || "Recommended"} <span className="chevron">▾</span>
+                </button>
+                {openDropdown === "sort" && (
+                  <div className="filter-dropdown-menu">
+                    {SORT_OPTIONS.map((s) => (
+                      <button
+                        key={s.value}
+                        className={sortBy === s.value ? "active" : ""}
+                        onClick={() => { setSortBy(s.value); setOpenDropdown(null); }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* BUDGET */}
-      <div className="filter-dropdown-wrap">
-        <button
-          className={`filter-dropdown-pill ${openDropdown === "budget" ? "open" : ""}`}
-          onClick={() => setOpenDropdown(openDropdown === "budget" ? null : "budget")}
-        >
-          {BUDGET_OPTIONS.find((b) => b.value === budget)?.label || "Any budget"} <span className="chevron">▾</span>
-        </button>
-        {openDropdown === "budget" && (
-          <div className="filter-dropdown-menu">
-            {BUDGET_OPTIONS.map((b) => (
-              <button
-                key={b.value}
-                className={budget === b.value ? "active" : ""}
-                onClick={() => { setBudget(b.value); setOpenDropdown(null); }}
-              >
-                {b.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* OPEN NOW - simple toggle pill, no dropdown */}
-      <button
-        className={`filter-dropdown-pill toggle-only ${openNow ? "active" : ""}`}
-        onClick={() => setOpenNow(!openNow)}
-      >
-        Open now
-      </button>
-
-      {/* RATING */}
-      <div className="filter-dropdown-wrap">
-        <button
-          className={`filter-dropdown-pill ${openDropdown === "rating" ? "open" : ""}`}
-          onClick={() => setOpenDropdown(openDropdown === "rating" ? null : "rating")}
-        >
-          {minRating > 0 ? `${minRating}★ & above` : "Any rating"} <span className="chevron">▾</span>
-        </button>
-        {openDropdown === "rating" && (
-          <div className="filter-dropdown-menu">
-            {[0, 3.5, 4.0, 4.5].map((r) => (
-              <button
-                key={r}
-                className={minRating === r ? "active" : ""}
-                onClick={() => { setMinRating(r); setOpenDropdown(null); }}
-              >
-                {r === 0 ? "Any rating" : `${r}★ & above`}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* SORT */}
-      <div className="filter-dropdown-wrap">
-        <button
-          className={`filter-dropdown-pill ${openDropdown === "sort" ? "open" : ""}`}
-          onClick={() => setOpenDropdown(openDropdown === "sort" ? null : "sort")}
-        >
-          Sort: {SORT_OPTIONS.find((s) => s.value === sortBy)?.label || "Recommended"} <span className="chevron">▾</span>
-        </button>
-        {openDropdown === "sort" && (
-          <div className="filter-dropdown-menu">
-            {SORT_OPTIONS.map((s) => (
-              <button
-                key={s.value}
-                className={sortBy === s.value ? "active" : ""}
-                onClick={() => { setSortBy(s.value); setOpenDropdown(null); }}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  </div>
-)}
-
-      
-        {/* States */}
         {loading && (
           <div className="loading">
             <div className="loading-spinner" />
@@ -471,7 +472,6 @@ const filterAndSort = (list) => {
           </div>
         )}
 
-        {/* Results */}
         {displayPlaces.length > 0 && (
           <>
             <p className="results-header">
@@ -525,7 +525,6 @@ const filterAndSort = (list) => {
         )}
       </div>
 
-      {/* Place Detail Modal */}
       {selectedPlace && (
         <div className="modal-overlay" onClick={() => setSelectedPlace(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -567,8 +566,8 @@ const filterAndSort = (list) => {
               )}
 
               <div className="modal-actions">
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedPlace.title)}`}
+                
+                <a  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedPlace.title)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="modal-btn primary"
@@ -590,18 +589,39 @@ const filterAndSort = (list) => {
     </div>
   );
 }
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/collections" element={<Collections />} />
-<Route path="/cities" element={<Cities />} />
-<Route path="/journal" element={<Journal />} />
-        
+        <Route
+          path="/collections"
+          element={
+            <ProtectedRoute>
+              <Collections />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/cities" element={<Cities />} />
+        <Route
+          path="/journal"
+          element={
+            <ProtectedRoute>
+              <Journal />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -1,150 +1,87 @@
-const User = require("../models/User");
-
 const bcrypt = require("bcryptjs");
-
 const jwt = require("jsonwebtoken");
+const validator = require("validator");
+const User = require("../models/User");
+const { sendWelcomeEmail } = require("../utils/mailer");
 
-
-// ==========================
-// SIGNUP
-// ==========================
-
-exports.signup = async (req, res) => {
-
+const signup = async (req, res) => {
   try {
+    const { username, email, password } = req.body;
 
-    const {
-      username,
-      email,
-      password,
-    } = req.body;
-
-
-    // CHECK IF USER EXISTS
-    const existingUser =
-      await User.findOne({ email });
-
-    if (existingUser) {
-
-      return res.status(400).json({
-        message: "User already exists",
-      });
-
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "All fields are required." });
     }
 
+    if (!validator.isEmail(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
 
-    // HASH PASSWORD
-    const hashedPassword =
-      await bcrypt.hash(password, 10);
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!strongPassword.test(password)) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.",
+      });
+    }
 
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res.status(409).json({ message: "That username is already taken." });
+    }
 
-    // CREATE USER
-    const user = await User.create({
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(409).json({ message: "An account with this email already exists." });
+    }
 
-      username,
-      email,
-      password: hashedPassword,
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({ username, email, password: hashedPassword });
 
-    });
+    try {
+      await sendWelcomeEmail(email, username);
+    } catch (emailErr) {
+      console.error("Welcome email failed:", emailErr.message);
+    }
 
-
-    // GENERATE TOKEN
-    const token = jwt.sign(
-
-      { id: user._id },
-
-      process.env.JWT_SECRET,
-
-      { expiresIn: "7d" }
-
-    );
-
-
-    res.status(201).json({
-
-      message: "Signup successful",
-
-      token,
-
-      user,
-
-    });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: error.message,
-    });
-
+    res.status(201).json({ message: "Account created successfully!", username: newUser.username });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 };
-// LOGIN
-exports.login = async (req, res) => {
 
+const login = async (req, res) => {
   try {
+    const { username, password } = req.body;
 
-    const {
-      email,
-      password,
-    } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required." });
+    }
 
-
-    // FIND USER
-    const user =
-      await User.findOne({ email });
-
+    const user = await User.findOne({ username });
     if (!user) {
-
-      return res.status(400).json({
-        message: "User not found",
-      });
-
+      return res.status(401).json({ message: "Invalid username or password." });
     }
 
-
-    // CHECK PASSWORD
-    const isMatch =
-      await bcrypt.compare(
-        password,
-        user.password
-      );
-
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-
-      return res.status(400).json({
-        message: "Invalid credentials",
-      });
-
+      return res.status(401).json({ message: "Invalid username or password." });
     }
 
-
-    // TOKEN
     const token = jwt.sign(
-
-      { id: user._id },
-
+      { id: user._id, username: user.username },
       process.env.JWT_SECRET,
-
       { expiresIn: "7d" }
-
     );
-
 
     res.status(200).json({
-
-      message: "Login successful",
-
+      message: "Login successful!",
       token,
-
-      user,
-
+      user: { username: user.username, email: user.email },
     });
-
-  } catch (error) {
-
-    res.status(500).json({
-      message: error.message,
-    });
-
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong. Please try again." });
   }
 };
+
+module.exports = { signup, login };

@@ -101,8 +101,8 @@
   align-items: center;
   gap: 10px;
   font-family: 'Playfair Display', serif;
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.2rem;
+  font-weight: 400;
   color: #1a1a1a;
   text-decoration: none;
   flex-shrink: 0;
@@ -151,5 +151,17 @@
 
 .nav-account-dropdown button:hover {
   background: #f5f6ff;
+  color: #4a63f5;
+}
+.footer-socials button {
+  background: none;
+  border: none;
+  color: #8a8a8a;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.footer-socials button:hover {
   color: #4a63f5;
 }
