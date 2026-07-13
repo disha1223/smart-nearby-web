@@ -112,6 +112,12 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(async () => {
     await Place.deleteMany({});
+    allPlaces = allPlaces.map(p => ({
+  ...p,
+  location: { type: "Point", coordinates: [p.lon, p.lat] },
+}));
+
+
     await Place.insertMany(allPlaces);
     console.log(`Seeded ${allPlaces.length} places!`);
     process.exit();

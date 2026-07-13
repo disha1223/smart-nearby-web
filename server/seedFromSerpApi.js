@@ -110,7 +110,13 @@ async function run() {
   }
 
   await Place.deleteMany({});
-  await Place.insertMany(allPlaces);
+
+  allPlaces = allPlaces.map(p => ({
+  ...p,
+  location: { type: "Point", coordinates: [p.lon, p.lat] },
+}));
+
+await Place.insertMany(allPlaces);
   console.log(`\nSeeded ${allPlaces.length} places with hours!`);
   process.exit();
 }
