@@ -67,6 +67,10 @@ function getGreeting() {
   return "Good evening.";
 }
 
+function getProxiedImage(url) {
+  if (!url) return "";
+  return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
+}
 function Dashboard() {
   const [mood, setMood] = useState("");
   const city = { label: "Manipal", lat: 13.3525, lon: 74.7934 };
@@ -302,7 +306,7 @@ function Dashboard() {
                     <div
                       key={i}
                       className="trending-card"
-                      style={{ backgroundImage: `url(${place.thumbnail})` }}
+                      style={{ backgroundImage: `url(${getProxiedImage(place.thumbnail)})` }}
                       onClick={() => setSelectedPlace(place)}
                     >
                       <span className="trending-card-overlay">
@@ -489,11 +493,11 @@ function Dashboard() {
                 >
                   <div className="place-img-wrap">
                     <img
-                      src={place.thumbnail}
-                      alt={place.title}
-                      className="place-img"
-                      onError={(e) => { e.target.src = "https://placehold.co/400x200?text=No+Image"; }}
-                    />
+  src={getProxiedImage(place.thumbnail)}
+  alt={place.title}
+  className="place-img"
+  onError={(e) => { e.target.src = "https://placehold.co/400x200?text=No+Image"; }}
+/>
                     <div className="place-img-overlay">
                       <span className="place-name-overlay">{place.title}</span>
                       {place.rating && <span className="rating-overlay">{place.rating}</span>}
@@ -529,7 +533,7 @@ function Dashboard() {
         <div className="modal-overlay" onClick={() => setSelectedPlace(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             {selectedPlace.thumbnail && (
-              <img src={selectedPlace.thumbnail} alt={selectedPlace.title} className="modal-img" />
+              <img src={getProxiedImage(selectedPlace.thumbnail)} alt={selectedPlace.title} className="modal-img" />
             )}
             <div className="modal-body">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>

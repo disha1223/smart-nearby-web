@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import Navbar from "../components/Navbar";
-
+function getProxiedImage(url) {
+  if (!url) return "";
+  return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
+}
 function Collections() {
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,7 @@ const removeFav = async (place) => {
               >
                 <div className="place-img-wrap">
                   <img
-                    src={place.thumbnail}
+                    src={getProxiedImage(place.image)}
                     alt={place.title}
                     className="place-img"
                     onError={(e) => {
@@ -118,7 +121,7 @@ const removeFav = async (place) => {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             {selectedPlace.thumbnail && (
               <img
-                src={selectedPlace.thumbnail}
+                src={getProxiedImage(selectedPlace.image)}
                 alt={selectedPlace.title}
                 className="modal-img"
               />
