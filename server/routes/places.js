@@ -69,45 +69,57 @@ const query = q ? q : (MOOD_QUERIES[mood] || mood);
   }
 
   try {
-    const serpRes = await axios.get("https://serpapi.com/search", {
-      params: {
-        engine: "google_maps",
-        q: query,
-        ll: `@${lat},${lon},14z`,
-        type: "search",
-        api_key: process.env.SERPAPI_KEY,
-      },
-    });
+    // ✅ Live SerpApi refresh is best-effort only. If it fails (rate limit, quota,
+    // network, etc.) we log it and fall straight through to querying the places
+    // you already seeded in Mongo — a live-API failure should never mean "no results".
+    let fetched = [];
+    try {
+      const serpRes = await axios.get("https://serpapi.com/search", {
+        params: {
+          engine: "google_maps",
+          q: query,
+          ll: `@${lat},${lon},14z`,
+          type: "search",
+          api_key: process.env.SERPAPI_KEY,
+        },
+      });
 
-    const fetched = (serpRes.data.local_results || [])
-      .filter(r => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
-      .map(r => ({
-        title: r.title,
-        type: r.type || mood || "Place",
-        address: r.address || "",
-        lat: r.gps_coordinates.latitude,
-        lon: r.gps_coordinates.longitude,
-        location: { type: "Point", coordinates: [r.gps_coordinates.longitude, r.gps_coordinates.latitude] },
-        rating: r.rating || 0,
-        reviews: r.reviews || 0,
-        price_level: r.price || "",
-        open_now: r.open_now ?? true,
-        image: r.thumbnail || r.serpapi_thumbnail || fallbackImg,
-        phone: r.phone || "",
-        mood_tags: [mood || "search"],
-      }));
+      fetched = (serpRes.data.local_results || [])
+        .filter(r => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
+        .map(r => ({
+          title: r.title,
+          type: r.type || mood || "Place",
+          address: r.address || "",
+          lat: r.gps_coordinates.latitude,
+          lon: r.gps_coordinates.longitude,
+          location: { type: "Point", coordinates: [r.gps_coordinates.longitude, r.gps_coordinates.latitude] },
+          rating: r.rating || 0,
+          reviews: r.reviews || 0,
+          price_level: r.price || "",
+          open_now: r.open_now ?? true,
+          image: r.thumbnail || r.serpapi_thumbnail || fallbackImg,
+          phone: r.phone || "",
+          mood_tags: [mood || "search"],
+        }));
 
-    // Upsert into Mongo so the geo index has data to search
-    for (const p of fetched) {
-      await Place.updateOne(
-        { title: p.title, address: p.address },
-        { $set: p },
-        { upsert: true }
+      // Upsert into Mongo so the geo index has fresh data too
+      for (const p of fetched) {
+        await Place.updateOne(
+          { title: p.title, address: p.address },
+          { $set: p },
+          { upsert: true }
+        );
+      }
+    } catch (serpErr) {
+      console.error(
+        "SerpApi live refresh failed — falling back to already-seeded places:",
+        serpErr.response?.data || serpErr.message
       );
     }
 
-    // Now let MongoDB do the distance math + sorting via the 2dsphere index
-// Now let MongoDB do the distance math + sorting via the 2dsphere index
+    // Now let MongoDB do the distance math + sorting via the 2dsphere index.
+    // This runs regardless of whether the live SerpApi refresh above succeeded,
+    // so results still come back from your seeded data even during an outage.
     const pipeline = [
       {
         $geoNear: {

@@ -47,7 +47,18 @@ router.post("/favourites", auth, async (req, res) => {
     }
 
     const favourites = await Favourite.find({ userId: req.userId }).populate("placeId");
-    res.json({ favourites: favourites.map(f => f.placeId) });
+
+    // ✅ A Favourite can point at a Place that no longer exists (e.g. after a reseed
+    // wiped and re-inserted the places collection with new _ids). populate() returns
+    // null for those — filter them out so the client never gets a null in the array,
+    // and clean up the now-dangling Favourite doc while we're at it.
+    const orphanedIds = favourites.filter(f => !f.placeId).map(f => f._id);
+    if (orphanedIds.length > 0) {
+      await Favourite.deleteMany({ _id: { $in: orphanedIds } });
+    }
+    const validFavourites = favourites.filter(f => f.placeId).map(f => f.placeId);
+
+    res.json({ favourites: validFavourites });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error updating favourites" });
@@ -58,7 +69,16 @@ router.post("/favourites", auth, async (req, res) => {
 router.get("/favourites", auth, async (req, res) => {
   try {
     const favourites = await Favourite.find({ userId: req.userId }).populate("placeId");
-    res.json({ favourites: favourites.map(f => f.placeId) });
+
+    // ✅ Same orphan-cleanup as above — a stale Favourite pointing at a deleted
+    // Place would otherwise send `null` entries straight to the client.
+    const orphanedIds = favourites.filter(f => !f.placeId).map(f => f._id);
+    if (orphanedIds.length > 0) {
+      await Favourite.deleteMany({ _id: { $in: orphanedIds } });
+    }
+    const validFavourites = favourites.filter(f => f.placeId).map(f => f.placeId);
+
+    res.json({ favourites: validFavourites });
   } catch (err) {
     res.status(500).json({ message: "Error fetching favourites" });
   }
