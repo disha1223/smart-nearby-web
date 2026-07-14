@@ -64,7 +64,22 @@ function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning.";
   if (hour < 17) return "Good afternoon.";
-  return "Good evening.";
+  if (hour < 21) return "Good evening.";
+  return "Good night.";
+}
+
+function getSubtitle() {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return "A quiet café, a fresh start, or somewhere new to think. Tell us the feeling — we'll find the place.";
+  }
+  if (hour < 17) {
+    return "A quiet café, a quick lunch, or somewhere new to think. Tell us the feeling — we'll find the place.";
+  }
+  if (hour < 21) {
+    return "A cozy dinner spot, a rooftop view, or somewhere new to unwind. Tell us the feeling — we'll find the place.";
+  }
+  return "A quiet café, a late-night bite, or somewhere new to think. Tell us the feeling — we'll find the place.";
 }
 
 function getProxiedImage(url) {
@@ -140,7 +155,9 @@ function Dashboard() {
     })
       .then((res) => res.json())
       .then((data) => {
-        if (Array.isArray(data.favourites)) setFavourites(data.favourites);
+        if (Array.isArray(data.favourites)) {
+          setFavourites(data.favourites.filter(Boolean));
+        }
       })
       .catch(console.error);
   }, []);
@@ -221,12 +238,14 @@ const handleSmartSearch = async () => {
   };
   const toggleFav = async (place) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || !place) return;
 
-    const exists = favourites.find((p) => p.title === place.title);
+    const exists = favourites.find((p) => p && p.title === place.title);
 
     setFavourites((prev) =>
-      exists ? prev.filter((p) => p.title !== place.title) : [...prev, place]
+      exists
+        ? prev.filter((p) => p && p.title !== place.title)
+        : [...prev, place]
     );
 
     try {
@@ -239,13 +258,16 @@ const handleSmartSearch = async () => {
         body: JSON.stringify({ place }),
       });
       const data = await res.json();
-      if (Array.isArray(data.favourites)) setFavourites(data.favourites);
+      if (Array.isArray(data.favourites)) {
+        setFavourites(data.favourites.filter(Boolean));
+      }
     } catch (error) {
       console.error(error);
     }
   };
 
-  const isFav = (place) => favourites.some((p) => p.title === place.title);
+  const isFav = (place) =>
+    !!place && favourites.some((p) => p && p.title === place.title);
 
   const filterAndSort = (list) => {
     let result = [...list];
@@ -290,8 +312,7 @@ const handleSmartSearch = async () => {
           What are you in the mood for?
         </h1>
         <p className="hero-subtitle">
-          A quiet café, a late-night bite, or somewhere new to think.
-          Tell us the feeling — we'll find the place.
+          {getSubtitle()}
         </p>
 
 <div className="search-bar-row">

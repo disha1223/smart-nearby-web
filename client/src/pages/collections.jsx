@@ -21,14 +21,17 @@ function Collections() {
   })
     .then((res) => res.json())
     .then((data) => {
-      if (Array.isArray(data.favourites)) setFavourites(data.favourites);
+      if (Array.isArray(data.favourites)) {
+        setFavourites(data.favourites.filter(Boolean));
+      }
     })
     .catch(console.error)
     .finally(() => setLoading(false));
 }, []);
 
 const removeFav = async (place) => {
-  setFavourites((prev) => prev.filter((p) => p.title !== place.title));
+  if (!place) return;
+  setFavourites((prev) => prev.filter((p) => p && p.title !== place.title));
   const token = localStorage.getItem("token");
   if (!token) return;
   try {
