@@ -232,19 +232,26 @@ body {
 .discover-btn {
   background: #3F6DF6;
   color: #fff;
-  width:145px;
-  height:52px;
+  width: auto;
+  height: 52px;
   border: none;
   border-radius: 28px;
-  padding: 12px 26px;
+  padding: 0 26px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
   transition: background 0.15s ease;
+  white-space: nowrap;
 }
 .discover-btn:hover { background: #3a52e0; }
 .discover-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
 .quick-filter-pills {
   display: flex;
   gap: 12px;
@@ -520,6 +527,12 @@ body {
   padding:0 14px 0 24px;
   box-shadow:0 8px 30px rgba(0,0,0,.08);
 }
+.search-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* tighter spacing between the two buttons */
+  margin-left: auto;
+}
 .search-bar-wrap-main .search-icon { font-size: 1.1rem; color: #999; }
 .search-bar-wrap-main input {
   flex: 1;
@@ -529,7 +542,9 @@ body {
   font-size: 1.05rem;
   padding: 8px 0;
 }
-
+.ask-ai-btn {
+  background: #3F6DF6 !important;
+}
 .search-bar-wrap { position: relative; margin-bottom: 24px; }
 .search-bar-wrap input {
   width: 100%;

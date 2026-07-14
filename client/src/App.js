@@ -93,6 +93,9 @@ function Dashboard() {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [trending, setTrending] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [interpretedAs, setInterpretedAs] = useState(null);
+  const [isSmartSearch, setIsSmartSearch] = useState(false);
 
   const [searchParams] = useSearchParams();
   const initialSearchDone = React.useRef(false);
@@ -163,6 +166,8 @@ function Dashboard() {
     setPlaces([]);
     setSearched(true);
     setActiveTab("explore");
+    setIsSmartSearch(false);
+    
 
     try {
       const params = new URLSearchParams({
@@ -183,7 +188,37 @@ function Dashboard() {
       setLoading(false);
     }
   };
+const handleSmartSearch = async () => {
+    if (!searchQuery.trim()) return;
+    const loc = getLocation();
+    setSmartLoading(true);
+    setError("");
+    setPlaces([]);
+    setSearched(true);
+    setActiveTab("explore");
+    setInterpretedAs(null);
+    setIsSmartSearch(true);
 
+    try {
+      const res = await fetch("http://localhost:5000/api/places/smart", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: searchQuery.trim(),
+          lat: loc.lat,
+          lon: loc.lon,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setPlaces(data.results || []);
+      setInterpretedAs(data.interpretedAs || null);
+    } catch (err) {
+      setError(err.message || "Failed to fetch places");
+    } finally {
+      setSmartLoading(false);
+    }
+  };
   const toggleFav = async (place) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -220,7 +255,7 @@ function Dashboard() {
     if (minRating > 0) {
       result = result.filter((p) => (p.rating || 0) >= minRating);
     }
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && !isSmartSearch) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
@@ -259,16 +294,17 @@ function Dashboard() {
           Tell us the feeling — we'll find the place.
         </p>
 
-        <div className="search-bar-row">
-          <div className="search-bar-wrap-main">
-            <Search size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search cafes, study spots, hidden gems..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
+<div className="search-bar-row">
+        <div className="search-bar-wrap-main">
+          <Search size={18} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Search cafes, study spots, hidden gems..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          />
+          <div className="search-actions">
             <button
               className="discover-btn"
               onClick={handleSearch}
@@ -276,8 +312,29 @@ function Dashboard() {
             >
               {loading ? "..." : "Discover"}
             </button>
+            <button
+              className="discover-btn ask-ai-btn"
+              onClick={handleSmartSearch}
+              disabled={!searchQuery.trim() || smartLoading}
+              title="Describe what you want in plain language and let AI find it"
+            >
+              {smartLoading ? "Thinking..." : "Ask AI"}
+            </button>
           </div>
         </div>
+      </div>
+        {interpretedAs && (
+          <div
+            className="hero-location"
+            style={{ marginTop: "14px", display: "inline-flex" }}
+          >
+            <span className="hero-location-dot" style={{ background: "#7c3aed" }} />
+            ✨ Searching for <strong style={{ margin: "0 4px" }}>{interpretedAs.searchQuery}</strong>
+            {interpretedAs.maxBudgetRupees ? `· under ₹${interpretedAs.maxBudgetRupees} ` : ""}
+            {interpretedAs.radiusKm ? `· within ${interpretedAs.radiusKm}km ` : ""}
+            {interpretedAs.excludeKeywords?.length > 0 ? `· avoiding ${interpretedAs.excludeKeywords.join(", ")}` : ""}
+          </div>
+        )}
       </div>
 
       <div className="container">
