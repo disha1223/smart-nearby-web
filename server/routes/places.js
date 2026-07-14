@@ -2,6 +2,8 @@
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
+const { buildPlacesCacheKey, getCache, setCache } = require("../utils/cache");
+const { parseSearchIntent } = require("../utils/intentParser");
 const Place = require("../models/Place"); //
 const MOOD_QUERIES = {
   study: "cafes with wifi",
@@ -40,6 +42,14 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
       Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.asin(Math.sqrt(a));
 }
+
+function getMaxRupeeFromPriceLevel(priceLevel) {
+  if (!priceLevel) return null;
+  const numbers = priceLevel.match(/[\d,]+/g);
+  if (!numbers || numbers.length === 0) return null;
+  const cleanedNumbers = numbers.map((n) => parseInt(n.replace(/,/g, ""), 10));
+  return Math.max(...cleanedNumbers);
+}
 router.get("/", async (req, res) => {
   const { mood, q, lat, lon, radius = 3, maxPrice } = req.query;
 
@@ -47,10 +57,16 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "lat, lon and mood or a search term are required" });
   }
 
-  const query = q ? q : (MOOD_QUERIES[mood] || mood);
+const query = q ? q : (MOOD_QUERIES[mood] || mood);
   const userLat = parseFloat(lat);
   const userLon = parseFloat(lon);
   const fallbackImg = FALLBACK_IMAGES[mood] || "";
+
+  const cacheKey = buildPlacesCacheKey({ type: "search", query, lat, lon, radius, maxPrice });
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return res.json({ ...cached, cached: true });
+  }
 
   try {
     const serpRes = await axios.get("https://serpapi.com/search", {
@@ -127,9 +143,86 @@ router.get("/", async (req, res) => {
       distance: p.distanceMeters / 1000, // back to km, matches old field
     }));
 
-    res.json({ mood: mood || q, results, total: results.length });
-  } catch (err) {
+const responseBody = { mood: mood || q, results, total: results.length };
+    await setCache(cacheKey, responseBody, 6 * 60 * 60);
+    res.json({ ...responseBody, cached: false });  } catch (err) {
     console.error("SerpApi/geo error:", err.message);
+    res.status(500).json({ error: "Failed to fetch places" });
+  }
+});
+
+router.post("/smart", async (req, res) => {
+  const { text, lat, lon } = req.body;
+
+  if (!text || !lat || !lon) {
+    return res.status(400).json({ error: "text, lat and lon are required" });
+  }
+
+  const userLat = parseFloat(lat);
+  const userLon = parseFloat(lon);
+
+  const intent = await parseSearchIntent(text);
+  const query = intent.searchQuery || text;
+  const radius = intent.radiusKm || 3;
+
+  const cacheKey = buildPlacesCacheKey({ type: "smart", query, lat, lon, radius, maxPrice: intent.maxBudgetRupees });
+  const cached = await getCache(cacheKey);
+  if (cached) {
+    return res.json({ ...cached, cached: true, interpretedAs: intent });
+  }
+
+  try {
+    const serpRes = await axios.get("https://serpapi.com/search", {
+      params: {
+        engine: "google_maps",
+        q: query,
+        ll: `@${lat},${lon},14z`,
+        type: "search",
+        api_key: process.env.SERPAPI_KEY,
+      },
+    });
+
+    let results = (serpRes.data.local_results || [])
+      .filter((r) => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
+      .map((r) => ({
+        title: r.title,
+        type: r.type || "Place",
+        address: r.address || "",
+        lat: r.gps_coordinates.latitude,
+        lon: r.gps_coordinates.longitude,
+        rating: r.rating || 0,
+        reviews: r.reviews || 0,
+        price_level: r.price || "",
+        open_now: r.open_now ?? true,
+        open_state: r.open_now === false ? "Closed" : "Open",
+        thumbnail: r.thumbnail || r.serpapi_thumbnail || "",
+        phone: r.phone || "",
+        distance: getDistanceKm(userLat, userLon, r.gps_coordinates.latitude, r.gps_coordinates.longitude),
+      }))
+      .filter((p) => p.distance <= Number(radius));
+
+    if (intent.maxBudgetRupees) {
+      results = results.filter((p) => {
+        const maxRupee = getMaxRupeeFromPriceLevel(p.price_level);
+        return maxRupee === null || maxRupee <= intent.maxBudgetRupees;
+      });
+    }
+
+    if (intent.excludeKeywords && intent.excludeKeywords.length > 0) {
+      results = results.filter((p) => {
+        const haystack = `${p.title} ${p.type}`.toLowerCase();
+        return !intent.excludeKeywords.some((word) => haystack.includes(word));
+      });
+    }
+
+    const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
+
+if (!intent.usedFallback) {
+      await setCache(cacheKey, responseBody, 6 * 60 * 60);
+    }
+    res.json({ ...responseBody, cached: false });
+  } catch (err) {
+    console.error("Smart search error:", err.message);
     res.status(500).json({ error: "Failed to fetch places" });
   }
 });

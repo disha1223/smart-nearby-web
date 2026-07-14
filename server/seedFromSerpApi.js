@@ -52,8 +52,8 @@ async function fetchPlacesForMood(mood, query) {
     },
   });
 
-  // ✅ Only top 20 per mood to save API quota
-  const results = (res.data.local_results || []).slice(0, 20);
+  // ✅ Only top 30 per mood to save API quota
+  const results = (res.data.local_results || []).slice(0, 30);
   const places = [];
 
   for (const r of results) {
