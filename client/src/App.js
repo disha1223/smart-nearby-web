@@ -13,9 +13,13 @@ import LandingPage from "./pages/landingpage";
 import Login from "./pages/Login";
 import Navbar from "./components/Navbar";
 import { SlidersHorizontal, Heart, Search } from "lucide-react";
+import SafetyRatingWidget from "./components/SafetyRatingWidget";
 import Collections from "./pages/collections";
 import Cities from "./pages/Cities";
 import Journal from "./pages/journal";
+import Hangout from "./pages/Hangout";
+import Insights from "./pages/Insights";
+
 
 import studyImg from "./pages/images/study.jpeg";
 import hangoutImg from "./pages/images/hangg.jpeg";
@@ -426,13 +430,40 @@ const handleSmartSearch = async () => {
               </div>
             </div>
 
-            <button
-              className="search-btn"
-              onClick={handleSearch}
-              disabled={!mood || loading}
-            >
-              {loading ? "Searching..." : "Find Places Near Me"}
-            </button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                className="search-btn"
+                onClick={handleSearch}
+                disabled={!mood || loading}
+              >
+                {loading ? "Searching..." : "Find Places Near Me"}
+              </button>
+              <button
+                className="search-btn"
+                style={{ background: "#3F6DF6" }}
+                onClick={async () => {
+                  const loc = getLocation();
+                  const token = localStorage.getItem("token");
+                  try {
+                    const res = await fetch("http://localhost:5000/api/hangout/create", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ lat: loc.lat, lon: loc.lon, radius, mood: mood || "hangout" }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.message);
+                    window.location.href = `/hangout/${data.code}`;
+                  } catch (err) {
+                    alert(err.message || "Failed to create hangout session");
+                  }
+                }}
+              >
+                 Plan a Hangout
+              </button>
+            </div>
           </>
         )}
         {(activeTab === "explore" || activeTab === "favourites") && (
@@ -646,7 +677,7 @@ const handleSmartSearch = async () => {
               {selectedPlace.description && (
                 <div className="modal-row">{selectedPlace.description}</div>
               )}
-
+<SafetyRatingWidget place={selectedPlace} />
               <div className="modal-actions">
                 
                 <a  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedPlace.title)}`}
@@ -704,6 +735,25 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route
+          path="/hangout"
+          element={
+            <ProtectedRoute>
+              <Hangout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/hangout/:code"
+          element={
+            <ProtectedRoute>
+              <Hangout />
+            </ProtectedRoute>
+          }
+        />
+<Route path="/insights" element={<Insights />} />
+
       </Routes>
     </BrowserRouter>
   );
