@@ -4,7 +4,10 @@ const axios = require("axios");
 const router = express.Router();
 const { buildPlacesCacheKey, getCache, setCache } = require("../utils/cache");
 const { parseSearchIntent } = require("../utils/intentParser");
-const Place = require("../models/Place"); //
+const Place = require("../models/Place"); 
+const SearchLog = require("../models/SearchLog");
+
+
 const MOOD_QUERIES = {
   study: "cafes with wifi",
   hangout: "casual restaurants cafes",
@@ -156,6 +159,9 @@ const query = q ? q : (MOOD_QUERIES[mood] || mood);
     }));
 
 const responseBody = { mood: mood || q, results, total: results.length };
+    SearchLog.create({ mood: mood || query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>
+      console.error("SearchLog write failed:", e.message)
+    );
     await setCache(cacheKey, responseBody, 6 * 60 * 60);
     res.json({ ...responseBody, cached: false });  } catch (err) {
     console.error("SerpApi/geo error:", err.message);
@@ -227,8 +233,10 @@ router.post("/smart", async (req, res) => {
       });
     }
 
-    const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
-
+const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
+    SearchLog.create({ mood: query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>
+      console.error("SearchLog write failed:", e.message)
+    );
 if (!intent.usedFallback) {
       await setCache(cacheKey, responseBody, 6 * 60 * 60);
     }
