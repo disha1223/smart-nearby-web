@@ -51,6 +51,87 @@ const MOODS = [
   { key: "hidden-gems", label: "Hidden Gems", sub: "Off the Beaten Path", color: "#a855f7", bg: "#f3e8ff", img: hiddenGemImg },
 ];
 
+// Fallback starting points shown when the user denies browser location access.
+const LANDMARKS = [
+  { label: "Tiger Circle", lat: 13.3489, lon: 74.7869 },
+  { label: "MIT Main Gate", lat: 13.3510, lon: 74.7935 },
+  { label: "Eshwar Nagar", lat: 13.3465, lon: 74.7899 },
+  { label: "Academic Block", lat: 13.3525, lon: 74.7934 },
+  { label: "End Point", lat: 13.3459, lon: 74.7961 },
+  { label: "KMC", lat: 13.3538, lon: 74.7867 },
+  { label: "Manipal Bus Stand", lat: 13.3492, lon: 74.7913 },
+];
+
+const TRAVEL_INFO_CACHE = new Map();
+
+function TravelInfo({ origin, place }) {
+  const [info, setInfo] = useState(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!origin || !place?.lat || !place?.lon) return;
+
+    const key = `${origin.lat.toFixed(4)},${origin.lon.toFixed(4)}->${place.lat},${place.lon}`;
+    if (TRAVEL_INFO_CACHE.has(key)) {
+      setInfo(TRAVEL_INFO_CACHE.get(key));
+      return;
+    }
+
+    let cancelled = false;
+    setInfo(null);
+    setError("");
+
+    const params = new URLSearchParams({
+      originLat: origin.lat,
+      originLng: origin.lon,
+      destinationLat: place.lat,
+      destinationLng: place.lon,
+    });
+
+    fetch(`http://localhost:5000/api/travel-info?${params}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data.error) throw new Error(data.error);
+        TRAVEL_INFO_CACHE.set(key, data);
+        setInfo(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Couldn't load travel info");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [origin, place]);
+
+  if (!origin || !place?.lat || !place?.lon) return null;
+
+  if (error) {
+    return <div className="travel-info travel-info-error">Travel info unavailable</div>;
+  }
+
+  if (!info) {
+    return (
+      <div className="travel-info travel-info-loading">
+        <span className="travel-info-spinner" />
+        Calculating...
+      </div>
+    );
+  }
+
+  return (
+    <div className="travel-info">
+      <span className="travel-info-row">📍 {info.distance.label}</span>
+      <span className="travel-info-row">🚶 {info.walkingTime.label}</span>
+      <span className="travel-info-row">🛺 Auto Fare: {info.estimatedFare.label}</span>
+      <span className="travel-info-row">
+        🚌 {info.busInfo.available ? info.busInfo.label : "No direct bus"}
+      </span>
+    </div>
+  );
+}
+
 const RADIUS_OPTIONS = [1, 2, 3, 5, 10];
 const BUDGET_OPTIONS = [
   { label: "Any", value: "" },
@@ -115,6 +196,8 @@ function Dashboard() {
   const [smartLoading, setSmartLoading] = useState(false);
   const [interpretedAs, setInterpretedAs] = useState(null);
   const [isSmartSearch, setIsSmartSearch] = useState(false);
+  const [locationDenied, setLocationDenied] = useState(false);
+  const [selectedLandmark, setSelectedLandmark] = useState(LANDMARKS[0].label);
 
   const [searchParams] = useSearchParams();
   const initialSearchDone = React.useRef(false);
@@ -141,14 +224,32 @@ function Dashboard() {
   };
 
   useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationDenied(true);
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         console.log("Accuracy (meters):", pos.coords.accuracy);
         setGpsLocation({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        setUseGPS(true);
+        setLocationDenied(false);
       },
-      () => setUseGPS(false)
+      () => {
+        setUseGPS(false);
+        setLocationDenied(true);
+      }
     );
   }, []);
+
+  // The starting point for travel-info calculations: GPS if granted,
+  // otherwise whichever landmark the user picked from the dropdown.
+  const travelOrigin = useGPS && gpsLocation
+    ? gpsLocation
+    : (() => {
+        const lm = LANDMARKS.find((l) => l.label === selectedLandmark);
+        return lm ? { lat: lm.lat, lon: lm.lon } : null;
+      })();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -311,6 +412,20 @@ const handleSmartSearch = async () => {
           <span className="hero-location-dot" />
           {useGPS && gpsLocation ? "Current Location" : city.label} · {radius} km radius
         </div>
+        {locationDenied && (
+          <div className="hero-location" style={{ marginTop: "8px", gap: "8px" }}>
+            <span>Location permission denied. Select your starting location.</span>
+            <select
+              value={selectedLandmark}
+              onChange={(e) => setSelectedLandmark(e.target.value)}
+              style={{ padding: "4px 8px", borderRadius: "6px" }}
+            >
+              {LANDMARKS.map((l) => (
+                <option key={l.label} value={l.label}>{l.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <h1 className="hero-title">
           {getGreeting()}<br />
           What are you in the mood for?
@@ -629,6 +744,9 @@ const handleSmartSearch = async () => {
                       >
                         <Heart size={18} fill={isFav(place) ? "#e0433f" : "none"} color={isFav(place) ? "#e0433f" : "#999"} />
                       </button>
+                    </div>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <TravelInfo origin={travelOrigin} place={place} />
                     </div>
                   </div>
                 </div>

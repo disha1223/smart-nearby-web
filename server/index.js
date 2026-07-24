@@ -14,6 +14,8 @@ const configRoutes = require("./routes/configData");
 const hangoutRoutes = require("./routes/hangout");
 const insightsRoutes = require("./routes/insights");
 const safetyRoutes = require("./routes/safety");
+const travelInfoRoutes = require("./routes/travelInfo");
+
 connectDB();
 
 const app = express();
@@ -33,6 +35,8 @@ app.use("/api/config", configRoutes);
 app.use("/api/hangout", hangoutRoutes);
 app.use("/api/insights", insightsRoutes);
 app.use("/api/safety", safetyRoutes);
+app.use("/api/travel-info", travelInfoRoutes);
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(
     `Server running on http://localhost:${PORT}`
