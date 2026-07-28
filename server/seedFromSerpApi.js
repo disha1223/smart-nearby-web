@@ -4,8 +4,18 @@ const Place = require("./models/Place");
 require("dotenv").config();
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
-const CENTER_LAT = 13.3525;
-const CENTER_LON = 74.7934;
+
+// Pass these in when you run the script, e.g.:
+//   node seedFromSerpApi.js 12.9716 77.5946 "Bangalore"
+const CENTER_LAT = parseFloat(process.argv[2]) || 13.3525;
+const CENTER_LON = parseFloat(process.argv[3]) || 74.7934;
+const CITY_NAME = process.argv[4] || "Manipal";
+const CITY_SLUG = CITY_NAME.toLowerCase().replace(/\s+/g, "-");
+
+if (!process.argv[2] || !process.argv[3]) {
+  console.log(`No coordinates passed — defaulting to Manipal (${CENTER_LAT}, ${CENTER_LON}).`);
+  console.log(`To seed a different city: node seedFromSerpApi.js <lat> <lon> "<city name>"`);
+}
 
 // How many pages of results to pull per query (Google Maps returns ~20/page).
 // 4 pages ≈ up to 80 results per query. Raise this if you want even deeper coverage,
@@ -15,64 +25,72 @@ const RESULTS_PER_PAGE = 20;
 
 // Multiple query variants per mood widen the net — SerpApi's Maps results
 // differ noticeably depending on phrasing, so more phrasings = more unique places.
-const MOOD_QUERIES = {
+// %CITY% gets swapped for the actual city name at runtime.
+const MOOD_QUERY_TEMPLATES = {
   study: [
-    "cafes with wifi near Manipal",
-    "study cafes near Manipal",
-    "libraries near Manipal",
+    "cafes with wifi near %CITY%",
+    "study cafes near %CITY%",
+    "libraries near %CITY%",
   ],
   hangout: [
-    "casual restaurants cafes near Manipal",
-    "hangout spots near Manipal",
-    "restaurants near Manipal",
+    "casual restaurants cafes near %CITY%",
+    "hangout spots near %CITY%",
+    "restaurants near %CITY%",
   ],
   "quick-bite": [
-    "fast food restaurants near Manipal",
-    "street food near Manipal",
-    "bakeries near Manipal",
+    "fast food restaurants near %CITY%",
+    "street food near %CITY%",
+    "bakeries near %CITY%",
   ],
   budget: [
-    "cheap restaurants near Manipal",
-    "budget eateries near Manipal",
+    "cheap restaurants near %CITY%",
+    "budget eateries near %CITY%",
   ],
   nightlife: [
-    "bars pubs nightclubs near Manipal",
-    "lounges near Manipal",
+    "bars pubs nightclubs near %CITY%",
+    "lounges near %CITY%",
   ],
   gaming: [
-    "gaming cafes arcades near Manipal",
-    "esports lounges near Manipal",
+    "gaming cafes arcades near %CITY%",
+    "esports lounges near %CITY%",
   ],
   fitness: [
-    "gyms fitness centers near Manipal",
-    "yoga studios near Manipal",
-    "sports complexes near Manipal",
+    "gyms fitness centers near %CITY%",
+    "yoga studios near %CITY%",
+    "sports complexes near %CITY%",
   ],
   rentals: [
-    "bike car rental shops near Manipal",
-    "scooter rental near Manipal",
+    "bike car rental shops near %CITY%",
+    "scooter rental near %CITY%",
   ],
   "hidden-gems": [
-    "unique local hidden spots near Manipal",
-    "local attractions near Manipal",
+    "unique local hidden spots near %CITY%",
+    "local attractions near %CITY%",
   ],
   beaches: [
-    "beaches near Manipal Udupi",
+    "beaches near %CITY%",
   ],
   movies: [
-    "movie theatres cinemas near Manipal",
+    "movie theatres cinemas near %CITY%",
   ],
   shopping: [
-    "shopping malls near Manipal",
-    "markets near Manipal",
-    "stores near Manipal",
+    "shopping malls near %CITY%",
+    "markets near %CITY%",
+    "stores near %CITY%",
   ],
   outdoors: [
-    "parks near Manipal",
-    "tourist attractions near Manipal",
-    "temples near Manipal",
+    "parks near %CITY%",
+    "tourist attractions near %CITY%",
+    "temples near %CITY%",
   ],
 };
+
+const MOOD_QUERIES = Object.fromEntries(
+  Object.entries(MOOD_QUERY_TEMPLATES).map(([mood, templates]) => [
+    mood,
+    templates.map((t) => t.replace(/%CITY%/g, CITY_NAME)),
+  ])
+);
 
 // ✅ Fetch full weekly hours from Place Details endpoint
 async function fetchHoursForPlace(title, location) {
@@ -163,7 +181,7 @@ async function fetchPlacesForMood(mood, queries) {
         image: r.thumbnail || "",
         phone: r.phone || "",
         mood_tags: [mood],
-        city: "manipal",
+        city: CITY_SLUG,
       });
     }
 
@@ -212,9 +230,9 @@ async function run() {
     location: { type: "Point", coordinates: [p.lon, p.lat] },
   }));
 
-  await Place.deleteMany({});
+  await Place.deleteMany({ city: CITY_SLUG }); // only clear this city's old data, not everyone else's
   await Place.insertMany(dedupedPlaces);
-  console.log(`\nSeeded ${dedupedPlaces.length} unique places with hours!`);
+  console.log(`\nSeeded ${dedupedPlaces.length} unique places for ${CITY_NAME}!`);
   process.exit();
 }
 

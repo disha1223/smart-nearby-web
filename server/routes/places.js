@@ -4,22 +4,9 @@ const axios = require("axios");
 const router = express.Router();
 const { buildPlacesCacheKey, getCache, setCache } = require("../utils/cache");
 const { parseSearchIntent } = require("../utils/intentParser");
-const Place = require("../models/Place"); 
+const Place = require("../models/Place");
 const SearchLog = require("../models/SearchLog");
-
-
-const MOOD_QUERIES = {
-  study: "cafes with wifi",
-  hangout: "casual restaurants cafes",
-  "quick-bite": "fast food restaurants",
-  budget: "cheap restaurants",
-  nightlife: "bars pubs nightclubs",
-  gaming: "gaming cafes arcades",
-  fitness: "gyms fitness centers",
-  rentals: "bike car rental shops",
-  beaches: "beaches",
-  "hidden-gems": "unique hidden local spots",
-};
+const { MOOD_QUERIES, getMaxRupeeFromPriceLevel, isMoodMismatch, scorePlace } = require("../utils/moodConfig");
 
 const FALLBACK_IMAGES = {
   study: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=600",
@@ -46,13 +33,6 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-function getMaxRupeeFromPriceLevel(priceLevel) {
-  if (!priceLevel) return null;
-  const numbers = priceLevel.match(/[\d,]+/g);
-  if (!numbers || numbers.length === 0) return null;
-  const cleanedNumbers = numbers.map((n) => parseInt(n.replace(/,/g, ""), 10));
-  return Math.max(...cleanedNumbers);
-}
 router.get("/", async (req, res) => {
   const { mood, q, lat, lon, radius = 3, maxPrice } = req.query;
 
@@ -60,7 +40,7 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "lat, lon and mood or a search term are required" });
   }
 
-const query = q ? q : (MOOD_QUERIES[mood] || mood);
+  const query = q ? q : (MOOD_QUERIES[mood] || mood);
   const userLat = parseFloat(lat);
   const userLon = parseFloat(lon);
   const fallbackImg = FALLBACK_IMAGES[mood] || "";
@@ -134,7 +114,7 @@ const query = q ? q : (MOOD_QUERIES[mood] || mood);
       },
     ];
 
-    // ADD THIS — only return places matching the current mood
+    // Only return places matching the current mood
     if (mood) {
       pipeline.push({ $match: { mood_tags: mood } });
     }
@@ -142,6 +122,7 @@ const query = q ? q : (MOOD_QUERIES[mood] || mood);
     if (maxPrice) {
       pipeline.push({ $match: { price_level: maxPrice } });
     }
+
     const results = (await Place.aggregate(pipeline)).map(p => ({
       title: p.title,
       type: p.type,
@@ -158,12 +139,22 @@ const query = q ? q : (MOOD_QUERIES[mood] || mood);
       distance: p.distanceMeters / 1000, // back to km, matches old field
     }));
 
-const responseBody = { mood: mood || q, results, total: results.length };
-    SearchLog.create({ mood: mood || query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>
+    // Drop outright mood mismatches (e.g. a burger joint showing up for "study"),
+    // then rank what's left by rating/reviews + how well it actually fits the mood.
+    let finalResults = results;
+    if (mood) {
+      finalResults = finalResults
+        .filter(p => !isMoodMismatch(p, mood))
+        .sort((a, b) => scorePlace(b, mood) - scorePlace(a, mood));
+    }
+
+    const responseBody = { mood: mood || q, results: finalResults, total: finalResults.length };
+    SearchLog.create({ mood: mood || query, lat: userLat, lon: userLon, resultsCount: finalResults.length }).catch((e) =>
       console.error("SearchLog write failed:", e.message)
     );
     await setCache(cacheKey, responseBody, 6 * 60 * 60);
-    res.json({ ...responseBody, cached: false });  } catch (err) {
+    res.json({ ...responseBody, cached: false });
+  } catch (err) {
     console.error("SerpApi/geo error:", err.message);
     res.status(500).json({ error: "Failed to fetch places" });
   }
@@ -184,10 +175,10 @@ router.post("/smart", async (req, res) => {
   const radius = intent.radiusKm || 3;
 
   const cacheKey = buildPlacesCacheKey({ type: "smart", query, lat, lon, radius, maxPrice: intent.maxBudgetRupees });
-  const cached = await getCache(cacheKey);
-  if (cached) {
-    return res.json({ ...cached, cached: true, interpretedAs: intent });
-  }
+  //const cached = await getCache(cacheKey);
+  //if (cached) {
+   // return res.json({ ...cached, cached: true, interpretedAs: intent });
+  //}
 
   try {
     const serpRes = await axios.get("https://serpapi.com/search", {
@@ -233,12 +224,12 @@ router.post("/smart", async (req, res) => {
       });
     }
 
-const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
+    const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
     SearchLog.create({ mood: query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>
       console.error("SearchLog write failed:", e.message)
     );
-if (!intent.usedFallback) {
-      await setCache(cacheKey, responseBody, 6 * 60 * 60);
+    if (!intent.usedFallback) {
+      //await setCache(cacheKey, responseBody, 6 * 60 * 60);
     }
     res.json({ ...responseBody, cached: false });
   } catch (err) {
@@ -303,4 +294,5 @@ router.get("/image-proxy", async (req, res) => {
     res.status(502).send("Failed to load image");
   }
 });
+
 module.exports = router;
