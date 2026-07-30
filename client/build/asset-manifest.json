@@ -1,15 +1,31 @@
 {
   "files": {
-    "main.css": "/static/css/main.1ac36545.css",
-    "main.js": "/static/js/main.4fd62d94.js",
-    "static/js/453.af205ec6.chunk.js": "/static/js/453.af205ec6.chunk.js",
+    "main.css": "/static/css/main.518a35ff.css",
+    "main.js": "/static/js/main.b7c0d49c.js",
+    "static/js/453.eca5f793.chunk.js": "/static/js/453.eca5f793.chunk.js",
+    "static/media/bangalore.jpeg": "/static/media/bangalore.870796863c20c52c3693.jpeg",
+    "static/media/beach.jpeg": "/static/media/beach.55210b1199ca769c66c3.jpeg",
+    "static/media/study.jpeg": "/static/media/study.e9a1ba662429cda2d713.jpeg",
+    "static/media/hang.jpeg": "/static/media/hang.c09cae3d6240427d51d0.jpeg",
+    "static/media/goa.jpeg": "/static/media/goa.50f0858b095056844d31.jpeg",
+    "static/media/pune.jpg": "/static/media/pune.8a7fd573b3e0b82356d9.jpg",
+    "static/media/hangg.jpeg": "/static/media/hangg.e26f59e3f3ed915f9e57.jpeg",
+    "static/media/game.jpeg": "/static/media/game.d6a6ac2b39a4843bb1b1.jpeg",
+    "static/media/club.jpeg": "/static/media/club.0da64ef2d1bdd79f96a7.jpeg",
+    "static/media/gym.jpeg": "/static/media/gym.9ce84fa7db3355c86506.jpeg",
+    "static/media/manipal.jpeg": "/static/media/manipal.7359ab95c12eede3243a.jpeg",
+    "static/media/delhi.jpg": "/static/media/delhi.2938c0e0d72444e00d11.jpg",
+    "static/media/mumbai.jpg": "/static/media/mumbai.fc7b48fd2818b79873d6.jpg",
+    "static/media/rent.jpeg": "/static/media/rent.40082ded92f417cf06db.jpeg",
+    "static/media/bite.jpeg": "/static/media/bite.470012720deb783fe7c1.jpeg",
+    "static/media/hidden.jpeg": "/static/media/hidden.dad90b0cfcff0ef42016.jpeg",
     "index.html": "/index.html",
-    "main.1ac36545.css.map": "/static/css/main.1ac36545.css.map",
-    "main.4fd62d94.js.map": "/static/js/main.4fd62d94.js.map",
-    "453.af205ec6.chunk.js.map": "/static/js/453.af205ec6.chunk.js.map"
+    "main.518a35ff.css.map": "/static/css/main.518a35ff.css.map",
+    "main.b7c0d49c.js.map": "/static/js/main.b7c0d49c.js.map",
+    "453.eca5f793.chunk.js.map": "/static/js/453.eca5f793.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.1ac36545.css",
-    "static/js/main.4fd62d94.js"
+    "static/css/main.518a35ff.css",
+    "static/js/main.b7c0d49c.js"
   ]
 }

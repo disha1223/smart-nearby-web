@@ -20,5 +20,8 @@
       "react-app",
       "react-app/jest"
     ]
-  }
+  },
+  "scripts": {
+  "start": "node index.js"
+}
 }
