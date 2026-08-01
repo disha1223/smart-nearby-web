@@ -3,7 +3,6 @@ const router = express.Router();
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const Favourite = require("../models/Favourite");
-const Place = require("../models/Place");
 
 // Middleware to verify token and get user
 const auth = async (req, res, next) => {
@@ -17,6 +16,7 @@ const auth = async (req, res, next) => {
     res.status(401).json({ message: "Invalid token" });
   }
 };
+
 // Get all journal entries (newest first)
 router.get("/journal", auth, async (req, res) => {
   try {
@@ -32,33 +32,37 @@ router.get("/journal", auth, async (req, res) => {
 router.post("/favourites", auth, async (req, res) => {
   try {
     const { place } = req.body;
-
-    let placeDoc = await Place.findOne({ title: place.title, address: place.address });
-    if (!placeDoc) {
-      placeDoc = await Place.create(place);
+    if (!place?.title || !place?.address) {
+      return res.status(400).json({ message: "place.title and place.address are required" });
     }
 
-    const existing = await Favourite.findOne({ userId: req.userId, placeId: placeDoc._id });
+    const existing = await Favourite.findOne({
+      userId: req.userId,
+      title: place.title,
+      address: place.address,
+    });
 
     if (existing) {
       await Favourite.deleteOne({ _id: existing._id });
     } else {
-      await Favourite.create({ userId: req.userId, placeId: placeDoc._id });
+      await Favourite.create({
+        userId: req.userId,
+        title: place.title,
+        type: place.type,
+        address: place.address,
+        lat: place.lat,
+        lon: place.lon,
+        rating: place.rating,
+        reviews: place.reviews,
+        price_level: place.price_level,
+        open_now: place.open_now,
+        image: place.thumbnail || place.image,
+        phone: place.phone,
+      });
     }
 
-    const favourites = await Favourite.find({ userId: req.userId }).populate("placeId");
-
-    // ✅ A Favourite can point at a Place that no longer exists (e.g. after a reseed
-    // wiped and re-inserted the places collection with new _ids). populate() returns
-    // null for those — filter them out so the client never gets a null in the array,
-    // and clean up the now-dangling Favourite doc while we're at it.
-    const orphanedIds = favourites.filter(f => !f.placeId).map(f => f._id);
-    if (orphanedIds.length > 0) {
-      await Favourite.deleteMany({ _id: { $in: orphanedIds } });
-    }
-    const validFavourites = favourites.filter(f => f.placeId).map(f => f.placeId);
-
-    res.json({ favourites: validFavourites });
+    const favourites = await Favourite.find({ userId: req.userId });
+    res.json({ favourites });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error updating favourites" });
@@ -68,21 +72,13 @@ router.post("/favourites", auth, async (req, res) => {
 // Get favourites
 router.get("/favourites", auth, async (req, res) => {
   try {
-    const favourites = await Favourite.find({ userId: req.userId }).populate("placeId");
-
-    // ✅ Same orphan-cleanup as above — a stale Favourite pointing at a deleted
-    // Place would otherwise send `null` entries straight to the client.
-    const orphanedIds = favourites.filter(f => !f.placeId).map(f => f._id);
-    if (orphanedIds.length > 0) {
-      await Favourite.deleteMany({ _id: { $in: orphanedIds } });
-    }
-    const validFavourites = favourites.filter(f => f.placeId).map(f => f.placeId);
-
-    res.json({ favourites: validFavourites });
+    const favourites = await Favourite.find({ userId: req.userId });
+    res.json({ favourites });
   } catch (err) {
     res.status(500).json({ message: "Error fetching favourites" });
   }
 });
+
 // Add a journal entry
 router.post("/journal", auth, async (req, res) => {
   try {

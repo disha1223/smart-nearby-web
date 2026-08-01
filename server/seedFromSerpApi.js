@@ -5,238 +5,123 @@ require("dotenv").config();
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY;
 
-// Pass these in when you run the script, e.g.:
-//   node seedFromSerpApi.js 12.9716 77.5946 "Bangalore"
 const CENTER_LAT = parseFloat(process.argv[2]) || 13.3525;
 const CENTER_LON = parseFloat(process.argv[3]) || 74.7934;
 const CITY_NAME = process.argv[4] || "Manipal";
 const CITY_SLUG = CITY_NAME.toLowerCase().replace(/\s+/g, "-");
 
-if (!process.argv[2] || !process.argv[3]) {
-  console.log(`No coordinates passed — defaulting to Manipal (${CENTER_LAT}, ${CENTER_LON}).`);
-  console.log(`To seed a different city: node seedFromSerpApi.js <lat> <lon> "<city name>"`);
-}
-
-// How many pages of results to pull per query (Google Maps returns ~20/page).
-// 4 pages ≈ up to 80 results per query. Raise this if you want even deeper coverage,
-// but each page is a separate SerpApi request, so it eats into your quota fast.
-const MAX_PAGES_PER_QUERY = 4;
-const RESULTS_PER_PAGE = 20;
-
-// Multiple query variants per mood widen the net — SerpApi's Maps results
-// differ noticeably depending on phrasing, so more phrasings = more unique places.
-// %CITY% gets swapped for the actual city name at runtime.
-const MOOD_QUERY_TEMPLATES = {
-  study: [
-    "cafes with wifi near %CITY%",
-    "study cafes near %CITY%",
-    "libraries near %CITY%",
-  ],
-  hangout: [
-    "casual restaurants cafes near %CITY%",
-    "hangout spots near %CITY%",
-    "restaurants near %CITY%",
-  ],
-  "quick-bite": [
-    "fast food restaurants near %CITY%",
-    "street food near %CITY%",
-    "bakeries near %CITY%",
-  ],
-  budget: [
-    "cheap restaurants near %CITY%",
-    "budget eateries near %CITY%",
-  ],
-  nightlife: [
-    "bars pubs nightclubs near %CITY%",
-    "lounges near %CITY%",
-  ],
-  gaming: [
-    "gaming cafes arcades near %CITY%",
-    "esports lounges near %CITY%",
-  ],
-  fitness: [
-    "gyms fitness centers near %CITY%",
-    "yoga studios near %CITY%",
-    "sports complexes near %CITY%",
-  ],
-  rentals: [
-    "bike car rental shops near %CITY%",
-    "scooter rental near %CITY%",
-  ],
-  "hidden-gems": [
-    "unique local hidden spots near %CITY%",
-    "local attractions near %CITY%",
-  ],
-  beaches: [
-    "beaches near %CITY%",
-  ],
-  movies: [
-    "movie theatres cinemas near %CITY%",
-  ],
-  shopping: [
-    "shopping malls near %CITY%",
-    "markets near %CITY%",
-    "stores near %CITY%",
-  ],
-  outdoors: [
-    "parks near %CITY%",
-    "tourist attractions near %CITY%",
-    "temples near %CITY%",
-  ],
+// Two search phrasings per mood now — wider net for trending to pick from,
+// still cheap: 10 moods x 2 queries = 20 SerpApi calls per run.
+const MOOD_QUERIES = {
+  study: ["cafes with wifi", "study cafes"],
+  hangout: ["hangout spots", "restaurants"],
+  "quick-bite": ["fast food restaurants", "street food"],
+  budget: ["cheap restaurants", "budget eateries"],
+  nightlife: ["bars pubs nightclubs", "lounges"],
+  gaming: ["gaming cafes arcades", "esports lounges"],
+  fitness: ["gyms fitness centers", "yoga studios"],
+  rentals: ["bike car rental shops", "scooter rental"],
+  "hidden-gems": ["unique local hidden spots", "local attractions"],
+  beaches: ["beaches", "beach resorts"],
 };
 
-const MOOD_QUERIES = Object.fromEntries(
-  Object.entries(MOOD_QUERY_TEMPLATES).map(([mood, templates]) => [
-    mood,
-    templates.map((t) => t.replace(/%CITY%/g, CITY_NAME)),
-  ])
-);
+// One SerpApi call per query. Reshapes the response into our Place schema.
+async function fetchPlacesForQuery(mood, searchTerm) {
+  const query = `${searchTerm} near ${CITY_NAME}`;
 
-// ✅ Fetch full weekly hours from Place Details endpoint
-async function fetchHoursForPlace(title, location) {
-  try {
-    const res = await axios.get("https://serpapi.com/search", {
-      params: {
-        engine: "google_maps",
-        q: `${title} ${location}`,
-        ll: `@${CENTER_LAT},${CENTER_LON},14z`,
-        type: "search",
-        api_key: SERPAPI_KEY,
+  const response = await axios.get("https://serpapi.com/search", {
+    params: {
+      engine: "google_maps",
+      q: query,
+      ll: `@${CENTER_LAT},${CENTER_LON},14z`,
+      type: "search",
+      api_key: SERPAPI_KEY,
+    },
+  });
+
+  const rawResults = response.data.local_results || [];
+  console.log(`  "${query}" → ${rawResults.length} places`);
+
+  return rawResults.map((place) => {
+    const { open_now, ...hoursByDay } = place.operating_hours || {};
+    return {
+      title: place.title,
+      type: place.type || mood,
+      address: place.address || "",
+      lat: place.gps_coordinates?.latitude || CENTER_LAT,
+      lon: place.gps_coordinates?.longitude || CENTER_LON,
+      location: {
+        type: "Point",
+        coordinates: [
+          place.gps_coordinates?.longitude || CENTER_LON,
+          place.gps_coordinates?.latitude || CENTER_LAT,
+        ],
       },
-    });
-    const match = res.data.local_results?.[0];
-    const hours = match?.operating_hours || {};
-    const { open_now, ...hoursByDay } = hours;
-    return hoursByDay;
-  } catch (err) {
-    return {};
+      rating: place.rating || 0,
+      reviews: place.reviews || 0,
+      price_level: place.price || "",
+      hours: hoursByDay, // full weekly schedule — lets us compute "open now" live
+      image: place.thumbnail || "",
+      phone: place.phone || "",
+      mood_tags: [mood],
+      city: CITY_SLUG,
+    };
+  });
+} // <-- this closing brace was missing, which broke everything below it
+
+// Runs both queries for a mood, one after another.
+async function fetchPlacesForMood(mood, searchTerms) {
+  let places = [];
+  for (const term of searchTerms) {
+    const results = await fetchPlacesForQuery(mood, term);
+    places.push(...results);
+    await new Promise((resolve) => setTimeout(resolve, 500)); // avoid rate limit
   }
-}
-
-// ✅ Paginates through a single query's results, up to MAX_PAGES_PER_QUERY pages
-async function fetchAllResultsForQuery(query) {
-  let allResults = [];
-
-  for (let page = 0; page < MAX_PAGES_PER_QUERY; page++) {
-    const start = page * RESULTS_PER_PAGE;
-    try {
-      const res = await axios.get("https://serpapi.com/search", {
-        params: {
-          engine: "google_maps",
-          q: query,
-          ll: `@${CENTER_LAT},${CENTER_LON},14z`,
-          type: "search",
-          start,
-          api_key: SERPAPI_KEY,
-        },
-      });
-
-      const results = res.data.local_results || [];
-      if (results.length === 0) break; // no more pages
-
-      allResults = allResults.concat(results);
-
-      // Stop early if this page came back short — usually means it's the last page
-      if (results.length < RESULTS_PER_PAGE) break;
-
-      await new Promise((resolve) => setTimeout(resolve, 500)); // avoid rate limit
-    } catch (err) {
-      console.error(`    Page ${page} failed for "${query}":`, err.message);
-      break;
-    }
-  }
-
-  return allResults;
-}
-
-async function fetchPlacesForMood(mood, queries) {
-  const places = [];
-
-  for (const query of queries) {
-    console.log(`  Query: "${query}"`);
-    const results = await fetchAllResultsForQuery(query);
-    console.log(`    Got ${results.length} raw results`);
-
-    for (const r of results) {
-      const rawHours = r.operating_hours || {};
-      const { open_now, ...hoursByDay } = rawHours;
-
-      let hours = hoursByDay;
-      if (Object.keys(hours).length === 0 && r.data_id) {
-        hours = await fetchHoursForPlace(r.title, r.address || "Manipal");
-        await new Promise((resolve) => setTimeout(resolve, 600));
-      }
-
-      places.push({
-        title: r.title,
-        type: r.type || mood,
-        address: r.address || "",
-        lat: r.gps_coordinates?.latitude || CENTER_LAT,
-        lon: r.gps_coordinates?.longitude || CENTER_LON,
-        rating: r.rating || 0,
-        reviews: r.reviews || 0,
-        price_level: r.price || "",
-        open_now: open_now ?? r.open_now ?? true,
-        hours,
-        image: r.thumbnail || "",
-        phone: r.phone || "",
-        mood_tags: [mood],
-        city: CITY_SLUG,
-      });
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
   return places;
+}
+
+// Same place can appear under multiple moods/queries — merge duplicates
+// instead of saving them twice.
+function dedupePlaces(places) {
+  const seen = new Map();
+
+  for (const place of places) {
+    const key = `${place.title.toLowerCase()}|${place.address.toLowerCase()}`;
+
+    if (seen.has(key)) {
+      const existing = seen.get(key);
+      existing.mood_tags = [...new Set([...existing.mood_tags, ...place.mood_tags])];
+    } else {
+      seen.set(key, place);
+    }
+  }
+
+  return [...seen.values()];
 }
 
 async function run() {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log("MongoDB connected");
+  console.log(`Connected to MongoDB. Seeding ${CITY_NAME}...\n`);
 
   let allPlaces = [];
 
-  for (const [mood, queries] of Object.entries(MOOD_QUERIES)) {
-    console.log(`\nFetching mood: ${mood}...`);
-    try {
-      const places = await fetchPlacesForMood(mood, queries);
-      console.log(`  Total for ${mood}: ${places.length} places`);
-      allPlaces = allPlaces.concat(places);
-    } catch (err) {
-      console.error(`  Error for ${mood}:`, err.message);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  for (const [mood, searchTerms] of Object.entries(MOOD_QUERIES)) {
+    console.log(`Fetching mood: ${mood}`);
+    const places = await fetchPlacesForMood(mood, searchTerms);
+    allPlaces.push(...places);
   }
 
-  // ✅ Dedupe places that showed up under multiple moods/queries, merging their mood_tags
-  const dedupedMap = new Map();
-  for (const p of allPlaces) {
-    const key = `${p.title.trim().toLowerCase()}|${p.address.trim().toLowerCase()}`;
-    if (dedupedMap.has(key)) {
-      const existing = dedupedMap.get(key);
-      const mergedTags = new Set([...existing.mood_tags, ...p.mood_tags]);
-      existing.mood_tags = Array.from(mergedTags);
-    } else {
-      dedupedMap.set(key, p);
-    }
-  }
+  const uniquePlaces = dedupePlaces(allPlaces);
+  console.log(`\n${allPlaces.length} raw results → ${uniquePlaces.length} unique places`);
 
-  let dedupedPlaces = Array.from(dedupedMap.values());
-  console.log(`\nDeduped: ${allPlaces.length} raw -> ${dedupedPlaces.length} unique places`);
+  await Place.deleteMany({ city: CITY_SLUG });
+  await Place.insertMany(uniquePlaces);
 
-  dedupedPlaces = dedupedPlaces.map((p) => ({
-    ...p,
-    location: { type: "Point", coordinates: [p.lon, p.lat] },
-  }));
-
-  await Place.deleteMany({ city: CITY_SLUG }); // only clear this city's old data, not everyone else's
-  await Place.insertMany(dedupedPlaces);
-  console.log(`\nSeeded ${dedupedPlaces.length} unique places for ${CITY_NAME}!`);
+  console.log(`Done! Seeded ${uniquePlaces.length} places for ${CITY_NAME}.`);
   process.exit();
 }
 
 run().catch((err) => {
-  console.error(err);
+  console.error("Seeding failed:", err.message);
   process.exit(1);
 });

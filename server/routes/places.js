@@ -4,6 +4,7 @@ const axios = require("axios");
 const router = express.Router();
 const { buildPlacesCacheKey, getCache, setCache } = require("../utils/cache");
 const { parseSearchIntent } = require("../utils/intentParser");
+const { isOpenNow } = require("../utils/openStatus");
 const Place = require("../models/Place");
 const SearchLog = require("../models/SearchLog");
 const { MOOD_QUERIES, getMaxRupeeFromPriceLevel, isMoodMismatch, scorePlace } = require("../utils/moodConfig");
@@ -69,21 +70,24 @@ router.get("/", async (req, res) => {
 
       fetched = (serpRes.data.local_results || [])
         .filter(r => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
-        .map(r => ({
-          title: r.title,
-          type: r.type || mood || "Place",
-          address: r.address || "",
-          lat: r.gps_coordinates.latitude,
-          lon: r.gps_coordinates.longitude,
-          location: { type: "Point", coordinates: [r.gps_coordinates.longitude, r.gps_coordinates.latitude] },
-          rating: r.rating || 0,
-          reviews: r.reviews || 0,
-          price_level: r.price || "",
-          open_now: r.open_now ?? true,
-          image: r.thumbnail || r.serpapi_thumbnail || fallbackImg,
-          phone: r.phone || "",
-          mood_tags: [mood || "search"],
-        }));
+        .map(r => {
+          const { open_now, ...hoursByDay } = r.operating_hours || {};
+          return {
+            title: r.title,
+            type: r.type || mood || "Place",
+            address: r.address || "",
+            lat: r.gps_coordinates.latitude,
+            lon: r.gps_coordinates.longitude,
+            location: { type: "Point", coordinates: [r.gps_coordinates.longitude, r.gps_coordinates.latitude] },
+            rating: r.rating || 0,
+            reviews: r.reviews || 0,
+            price_level: r.price || "",
+            hours: hoursByDay, // full weekly schedule — open/closed is computed live, not stored as a stale flag
+            image: r.thumbnail || r.serpapi_thumbnail || fallbackImg,
+            phone: r.phone || "",
+            mood_tags: [mood || "search"],
+          };
+        });
 
       // Upsert into Mongo so the geo index has fresh data too
       for (const p of fetched) {
@@ -123,21 +127,23 @@ router.get("/", async (req, res) => {
       pipeline.push({ $match: { price_level: maxPrice } });
     }
 
-    const results = (await Place.aggregate(pipeline)).map(p => ({
-      title: p.title,
-      type: p.type,
-      address: p.address,
-      lat: p.lat,
-      lon: p.lon,
-      rating: p.rating,
-      reviews: p.reviews,
-      price_level: p.price_level,
-      open_now: p.open_now,
-      open_state: p.open_now === false ? "Closed" : "Open",
-      thumbnail: p.image,
-      phone: p.phone,
-      distance: p.distanceMeters / 1000, // back to km, matches old field
-    }));
+    const results = (await Place.aggregate(pipeline)).map(p => {
+      const liveOpen = isOpenNow(p.hours);
+      return {
+        title: p.title,
+        type: p.type,
+        address: p.address,
+        lat: p.lat,
+        lon: p.lon,
+        rating: p.rating,
+        reviews: p.reviews,
+        price_level: p.price_level,
+        open_state: liveOpen === null ? "Hours unknown" : liveOpen ? "Open" : "Closed",
+        thumbnail: p.image,
+        phone: p.phone,
+        distance: p.distanceMeters / 1000, // back to km, matches old field
+      };
+    });
 
     // Drop outright mood mismatches (e.g. a burger joint showing up for "study"),
     // then rank what's left by rating/reviews + how well it actually fits the mood.
@@ -191,6 +197,9 @@ router.post("/smart", async (req, res) => {
       },
     });
 
+    // Note: this route hits SerpApi live on every request (no seeding step),
+    // so r.open_now here IS current at request time — unlike the seeded-data
+    // path in "/", this one doesn't need the hours-based fallback.
     let results = (serpRes.data.local_results || [])
       .filter((r) => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
       .map((r) => ({
@@ -202,8 +211,7 @@ router.post("/smart", async (req, res) => {
         rating: r.rating || 0,
         reviews: r.reviews || 0,
         price_level: r.price || "",
-        open_now: r.open_now ?? true,
-        open_state: r.open_now === false ? "Closed" : "Open",
+        open_state: r.open_now === false ? "Closed" : r.open_now === true ? "Open" : "Hours unknown",
         thumbnail: r.thumbnail || r.serpapi_thumbnail || "",
         phone: r.phone || "",
         distance: getDistanceKm(userLat, userLon, r.gps_coordinates.latitude, r.gps_coordinates.longitude),
@@ -253,18 +261,21 @@ router.get("/trending", async (req, res) => {
           spherical: true,
         },
       },
-      { $match: { rating: { $gte: 4.0 }, reviews: { $gte: 20 } } },
+      { $match: { rating: { $gte: 3.5 }, reviews: { $gte: 5 } } },
       { $sort: { reviews: -1 } },
       { $limit: 10 },
     ]);
 
     res.json({
-      results: results.map(p => ({
-        title: p.title, type: p.type, address: p.address,
-        rating: p.rating, reviews: p.reviews, price_level: p.price_level,
-        open_state: p.open_now === false ? "Closed" : "Open",
-        thumbnail: p.image, phone: p.phone, distance: p.distanceMeters / 1000,
-      })),
+      results: results.map(p => {
+        const liveOpen = isOpenNow(p.hours);
+        return {
+          title: p.title, type: p.type, address: p.address,
+          rating: p.rating, reviews: p.reviews, price_level: p.price_level,
+          open_state: liveOpen === null ? "Hours unknown" : liveOpen ? "Open" : "Closed",
+          thumbnail: p.image, phone: p.phone, distance: p.distanceMeters / 1000,
+        };
+      }),
       total: results.length,
     });
   } catch (err) {

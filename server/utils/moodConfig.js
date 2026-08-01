@@ -45,6 +45,13 @@ const MOOD_EXCLUDE_KEYWORDS = {
   beaches: ["gym", "restaurant"],
 };
 
+// Moods narrow enough that blocklisting alone isn't reliable — a place needs
+// to actually contain a mood keyword (not just avoid the bad ones) to count.
+// "beaches" is the clearest case: near a landlocked city, Google Maps returns
+// random loosely-related places (bus stands, etc.) since there's nothing real
+// to match, and none of those happen to hit a blocklist word.
+const STRICT_MOODS = ["beaches"];
+
 function getMaxRupeeFromPriceLevel(priceLevel) {
   if (!priceLevel) return null;
   const numbers = priceLevel.match(/[\d,]+/g);
@@ -56,10 +63,23 @@ function getMaxRupeeFromPriceLevel(priceLevel) {
 // True if this place should be dropped from results for this mood entirely,
 // regardless of rating/reviews. Check this BEFORE scoring/sorting.
 function isMoodMismatch(p, mood) {
-  const excludeList = MOOD_EXCLUDE_KEYWORDS[mood];
-  if (!excludeList) return false;
   const haystack = `${p.title || ""} ${p.type || ""}`.toLowerCase();
-  return excludeList.some((kw) => haystack.includes(kw));
+
+  // Blocklist check — drop it if it contains a clearly wrong-mood word.
+  const excludeList = MOOD_EXCLUDE_KEYWORDS[mood];
+  if (excludeList && excludeList.some((kw) => haystack.includes(kw))) {
+    return true;
+  }
+
+  // Allowlist check — for strict moods, require at least one real signal
+  // that this place actually fits the mood, not just "nothing bad matched".
+  if (STRICT_MOODS.includes(mood)) {
+    const keywords = MOOD_KEYWORDS[mood] || [];
+    const hasPositiveMatch = keywords.some((kw) => haystack.includes(kw));
+    if (!hasPositiveMatch) return true;
+  }
+
+  return false;
 }
 
 // Higher score = better fit. Rating and review count reward genuinely

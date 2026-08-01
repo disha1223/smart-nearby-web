@@ -171,6 +171,15 @@ function getProxiedImage(url) {
   if (!url) return "";
   return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
 }
+
+function getOpenBadgeClass(state) {
+  if (!state) return "";
+  const s = state.toLowerCase();
+  if (s.includes("open")) return "open";
+  if (s.includes("closed")) return "closed";
+  return "unknown"; // "Hours unknown"
+}
+
 function Dashboard() {
   const [mood, setMood] = useState("");
   const city = { label: "Manipal", lat: 13.3525, lon: 74.7934 };
@@ -506,6 +515,7 @@ const handleSmartSearch = async () => {
                       style={{ backgroundImage: `url(${getProxiedImage(place.thumbnail)})` }}
                       onClick={() => setSelectedPlace(place)}
                     >
+                      
                       <span className="trending-card-overlay">
                         <span className="trending-card-rating">★ {place.rating} · {place.reviews} reviews</span>
                         <span className="trending-card-name">{place.title}</span>
@@ -733,7 +743,7 @@ const handleSmartSearch = async () => {
                     <div className="place-meta">
                       {place.reviews && <span className="reviews">({place.reviews} reviews)</span>}
                       {place.open_state && (
-                        <span className={`open-badge ${place.open_state.toLowerCase().includes("open") ? "open" : "closed"}`}>
+                        <span className={`open-badge ${getOpenBadgeClass(place.open_state)}`}>
                           {place.open_state}
                         </span>
                       )}
@@ -783,9 +793,13 @@ const handleSmartSearch = async () => {
               {selectedPlace.address && (
                 <div className="modal-row">{selectedPlace.address}</div>
               )}
-              {selectedPlace.open_state && (
-                <div className="modal-row">{selectedPlace.open_state}</div>
-              )}
+             {selectedPlace.open_state && (
+  <div className="modal-row">
+    <span className={`open-badge ${getOpenBadgeClass(selectedPlace.open_state)}`}>
+      {selectedPlace.open_state}
+    </span>
+  </div>
+)}
               {selectedPlace.price && (
                 <div className="modal-row">{selectedPlace.price}</div>
               )}
