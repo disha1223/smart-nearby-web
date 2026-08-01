@@ -5,6 +5,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useNavigate,
   useSearchParams,
 } from "react-router-dom";
 
@@ -19,6 +20,7 @@ import Cities from "./pages/Cities";
 import Journal from "./pages/journal";
 import Hangout from "./pages/Hangout";
 import Insights from "./pages/Insights";
+import PlaceDetail from "./pages/PlaceDetails";
 
 
 import studyImg from "./pages/images/study.jpeg";
@@ -194,7 +196,6 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState(null);
   const [favourites, setFavourites] = useState([]);
   const [activeTab, setActiveTab] = useState("explore");
   const moodScrollRef = React.useRef(null);
@@ -207,7 +208,7 @@ function Dashboard() {
   const [isSmartSearch, setIsSmartSearch] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
   const [selectedLandmark, setSelectedLandmark] = useState(LANDMARKS[0].label);
-
+const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const initialSearchDone = React.useRef(false);
 
@@ -513,9 +514,8 @@ const handleSmartSearch = async () => {
                       key={i}
                       className="trending-card"
                       style={{ backgroundImage: `url(${getProxiedImage(place.thumbnail)})` }}
-                      onClick={() => setSelectedPlace(place)}
+                      onClick={() => navigate("/place", { state: { place } })}
                     >
-                      
                       <span className="trending-card-overlay">
                         <span className="trending-card-rating">★ {place.rating} · {place.reviews} reviews</span>
                         <span className="trending-card-name">{place.title}</span>
@@ -723,7 +723,7 @@ const handleSmartSearch = async () => {
                   className="place-card"
                   key={i}
                   style={{ animationDelay: `${i * 50}ms` }}
-                  onClick={() => setSelectedPlace(place)}
+                  onClick={() => navigate("/place", { state: { place } })}
                 >
                   <div className="place-img-wrap">
                     <img
@@ -765,72 +765,6 @@ const handleSmartSearch = async () => {
           </>
         )}
       </div>
-
-      {selectedPlace && (
-        <div className="modal-overlay" onClick={() => setSelectedPlace(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            {selectedPlace.thumbnail && (
-              <img src={getProxiedImage(selectedPlace.thumbnail)} alt={selectedPlace.title} className="modal-img" />
-            )}
-            <div className="modal-body">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
-                  <div className="modal-title">{selectedPlace.title}</div>
-                  <div className="modal-type">{selectedPlace.type}</div>
-                </div>
-                <button
-                  className="fav-btn"
-                  style={{ fontSize: "24px" }}
-                  onClick={() => toggleFav(selectedPlace)}
-                >
-                  <Heart size={22} fill={isFav(selectedPlace) ? "#e0433f" : "none"} color={isFav(selectedPlace) ? "#e0433f" : "#999"} />
-                </button>
-              </div>
-
-              {selectedPlace.rating && (
-                <div className="modal-row">{selectedPlace.rating} · {selectedPlace.reviews} reviews</div>
-              )}
-              {selectedPlace.address && (
-                <div className="modal-row">{selectedPlace.address}</div>
-              )}
-             {selectedPlace.open_state && (
-  <div className="modal-row">
-    <span className={`open-badge ${getOpenBadgeClass(selectedPlace.open_state)}`}>
-      {selectedPlace.open_state}
-    </span>
-  </div>
-)}
-              {selectedPlace.price && (
-                <div className="modal-row">{selectedPlace.price}</div>
-              )}
-              {selectedPlace.phone && (
-                <div className="modal-row">{selectedPlace.phone}</div>
-              )}
-              {selectedPlace.description && (
-                <div className="modal-row">{selectedPlace.description}</div>
-              )}
-<SafetyRatingWidget place={selectedPlace} />
-              <div className="modal-actions">
-                
-                <a  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(selectedPlace.title)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="modal-btn primary"
-                  style={{ textDecoration: "none", textAlign: "center" }}
-                >
-                  Get Directions
-                </a>
-                <button
-                  className="modal-btn secondary"
-                  onClick={() => setSelectedPlace(null)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -885,6 +819,7 @@ export default function App() {
           }
         />
 <Route path="/insights" element={<Insights />} />
+<Route path="/place" element={<PlaceDetail />} />
 
       </Routes>
     </BrowserRouter>

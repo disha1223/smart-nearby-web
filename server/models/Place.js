@@ -19,6 +19,7 @@ const placeSchema = new mongoose.Schema({
   phone: String,
   mood_tags: [String],
   city: String,
+  dataId: { type: String, default: "" },
 }, { timestamps: true });
 
 // Keep `location` in sync whenever lat/lon are set

@@ -46,16 +46,14 @@ router.get("/", async (req, res) => {
   const userLon = parseFloat(lon);
   const fallbackImg = FALLBACK_IMAGES[mood] || "";
 
-  const cacheKey = buildPlacesCacheKey({ type: "search", query, lat, lon, radius, maxPrice });
+  const CACHE_VERSION = "v3"; // bump this any time the results shape changes
+  const cacheKey = buildPlacesCacheKey({ type: "search", query, lat, lon, radius, maxPrice, v: CACHE_VERSION });
   const cached = await getCache(cacheKey);
   if (cached) {
     return res.json({ ...cached, cached: true });
   }
 
   try {
-    // ✅ Live SerpApi refresh is best-effort only. If it fails (rate limit, quota,
-    // network, etc.) we log it and fall straight through to querying the places
-    // you already seeded in Mongo — a live-API failure should never mean "no results".
     let fetched = [];
     try {
       const serpRes = await axios.get("https://serpapi.com/search", {
@@ -82,14 +80,14 @@ router.get("/", async (req, res) => {
             rating: r.rating || 0,
             reviews: r.reviews || 0,
             price_level: r.price || "",
-            hours: hoursByDay, // full weekly schedule — open/closed is computed live, not stored as a stale flag
+            hours: hoursByDay,
             image: r.thumbnail || r.serpapi_thumbnail || fallbackImg,
             phone: r.phone || "",
+            dataId: r.data_id || "",
             mood_tags: [mood || "search"],
           };
         });
 
-      // Upsert into Mongo so the geo index has fresh data too
       for (const p of fetched) {
         await Place.updateOne(
           { title: p.title, address: p.address },
@@ -104,21 +102,17 @@ router.get("/", async (req, res) => {
       );
     }
 
-    // Now let MongoDB do the distance math + sorting via the 2dsphere index.
-    // This runs regardless of whether the live SerpApi refresh above succeeded,
-    // so results still come back from your seeded data even during an outage.
     const pipeline = [
       {
         $geoNear: {
           near: { type: "Point", coordinates: [userLon, userLat] },
           distanceField: "distanceMeters",
-          maxDistance: Number(radius) * 1000, // radius is in km
+          maxDistance: Number(radius) * 1000,
           spherical: true,
         },
       },
     ];
 
-    // Only return places matching the current mood
     if (mood) {
       pipeline.push({ $match: { mood_tags: mood } });
     }
@@ -139,14 +133,15 @@ router.get("/", async (req, res) => {
         reviews: p.reviews,
         price_level: p.price_level,
         open_state: liveOpen === null ? "Hours unknown" : liveOpen ? "Open" : "Closed",
+        hours: p.hours,
+        dataId: p.dataId,
+
         thumbnail: p.image,
         phone: p.phone,
-        distance: p.distanceMeters / 1000, // back to km, matches old field
+        distance: p.distanceMeters / 1000,
       };
     });
 
-    // Drop outright mood mismatches (e.g. a burger joint showing up for "study"),
-    // then rank what's left by rating/reviews + how well it actually fits the mood.
     let finalResults = results;
     if (mood) {
       finalResults = finalResults
@@ -181,10 +176,6 @@ router.post("/smart", async (req, res) => {
   const radius = intent.radiusKm || 3;
 
   const cacheKey = buildPlacesCacheKey({ type: "smart", query, lat, lon, radius, maxPrice: intent.maxBudgetRupees });
-  //const cached = await getCache(cacheKey);
-  //if (cached) {
-   // return res.json({ ...cached, cached: true, interpretedAs: intent });
-  //}
 
   try {
     const serpRes = await axios.get("https://serpapi.com/search", {
@@ -197,25 +188,26 @@ router.post("/smart", async (req, res) => {
       },
     });
 
-    // Note: this route hits SerpApi live on every request (no seeding step),
-    // so r.open_now here IS current at request time — unlike the seeded-data
-    // path in "/", this one doesn't need the hours-based fallback.
     let results = (serpRes.data.local_results || [])
       .filter((r) => r.gps_coordinates?.latitude && r.gps_coordinates?.longitude)
-      .map((r) => ({
-        title: r.title,
-        type: r.type || "Place",
-        address: r.address || "",
-        lat: r.gps_coordinates.latitude,
-        lon: r.gps_coordinates.longitude,
-        rating: r.rating || 0,
-        reviews: r.reviews || 0,
-        price_level: r.price || "",
-        open_state: r.open_now === false ? "Closed" : r.open_now === true ? "Open" : "Hours unknown",
-        thumbnail: r.thumbnail || r.serpapi_thumbnail || "",
-        phone: r.phone || "",
-        distance: getDistanceKm(userLat, userLon, r.gps_coordinates.latitude, r.gps_coordinates.longitude),
-      }))
+      .map((r) => {
+        const { open_now, ...hoursByDay } = r.operating_hours || {};
+        return {
+          title: r.title,
+          type: r.type || "Place",
+          address: r.address || "",
+          lat: r.gps_coordinates.latitude,
+          lon: r.gps_coordinates.longitude,
+          rating: r.rating || 0,
+          reviews: r.reviews || 0,
+          price_level: r.price || "",
+          open_state: open_now === false ? "Closed" : open_now === true ? "Open" : "Hours unknown",
+          hours: hoursByDay,
+          thumbnail: r.thumbnail || r.serpapi_thumbnail || "",
+          phone: r.phone || "",
+          distance: getDistanceKm(userLat, userLon, r.gps_coordinates.latitude, r.gps_coordinates.longitude),
+        };
+      })
       .filter((p) => p.distance <= Number(radius));
 
     if (intent.maxBudgetRupees) {
@@ -236,9 +228,6 @@ router.post("/smart", async (req, res) => {
     SearchLog.create({ mood: query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>
       console.error("SearchLog write failed:", e.message)
     );
-    if (!intent.usedFallback) {
-      //await setCache(cacheKey, responseBody, 6 * 60 * 60);
-    }
     res.json({ ...responseBody, cached: false });
   } catch (err) {
     console.error("Smart search error:", err.message);
@@ -273,6 +262,8 @@ router.get("/trending", async (req, res) => {
           title: p.title, type: p.type, address: p.address,
           rating: p.rating, reviews: p.reviews, price_level: p.price_level,
           open_state: liveOpen === null ? "Hours unknown" : liveOpen ? "Open" : "Closed",
+          hours: p.hours,
+          dataId: p.dataId,
           thumbnail: p.image, phone: p.phone, distance: p.distanceMeters / 1000,
         };
       }),
@@ -285,7 +276,6 @@ router.get("/trending", async (req, res) => {
 });
 
 
-// Simple image proxy — fetches the image once and passes it through
 router.get("/image-proxy", async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).send("Missing url");
@@ -305,5 +295,33 @@ router.get("/image-proxy", async (req, res) => {
     res.status(502).send("Failed to load image");
   }
 });
+router.get("/photos", async (req, res) => {
+  const { dataId } = req.query;
+  if (!dataId) return res.status(400).json({ error: "dataId is required" });
 
+  const cacheKey = `photos:${dataId}`;
+  const cached = await getCache(cacheKey);
+  if (cached) return res.json({ photos: cached, cached: true });
+
+  try {
+    const serpRes = await axios.get("https://serpapi.com/search", {
+      params: {
+        engine: "google_maps_photos",
+        data_id: dataId,
+        api_key: process.env.SERPAPI_KEY,
+      },
+    });
+
+    const photos = (serpRes.data.photos || [])
+      .map(p => p.image || p.thumbnail)
+      .filter(Boolean)
+      .slice(0, 12); // cap it, no need for hundreds
+
+    await setCache(cacheKey, photos, 30 * 24 * 60 * 60); // cache 30 days — photos rarely change
+    res.json({ photos, cached: false });
+  } catch (err) {
+    console.error("Photos fetch error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Failed to fetch photos" });
+  }
+});
 module.exports = router;

@@ -60,7 +60,8 @@ async function fetchPlacesForQuery(mood, searchTerm) {
       rating: place.rating || 0,
       reviews: place.reviews || 0,
       price_level: place.price || "",
-      hours: hoursByDay, // full weekly schedule — lets us compute "open now" live
+      hours: hoursByDay, 
+      dataId: place.data_id || "",// full weekly schedule — lets us compute "open now" live
       image: place.thumbnail || "",
       phone: place.phone || "",
       mood_tags: [mood],
