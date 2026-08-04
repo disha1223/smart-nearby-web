@@ -46,7 +46,7 @@ router.get("/", async (req, res) => {
   const userLon = parseFloat(lon);
   const fallbackImg = FALLBACK_IMAGES[mood] || "";
 
-  const CACHE_VERSION = "v3"; // bump this any time the results shape changes
+  const CACHE_VERSION = "v4"; // bump this any time the results shape changes
   const cacheKey = buildPlacesCacheKey({ type: "search", query, lat, lon, radius, maxPrice, v: CACHE_VERSION });
   const cached = await getCache(cacheKey);
   if (cached) {
@@ -203,6 +203,7 @@ router.post("/smart", async (req, res) => {
           price_level: r.price || "",
           open_state: open_now === false ? "Closed" : open_now === true ? "Open" : "Hours unknown",
           hours: hoursByDay,
+          dataId: r.data_id || "",
           thumbnail: r.thumbnail || r.serpapi_thumbnail || "",
           phone: r.phone || "",
           distance: getDistanceKm(userLat, userLon, r.gps_coordinates.latitude, r.gps_coordinates.longitude),
