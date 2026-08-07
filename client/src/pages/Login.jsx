@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import "./Auth.css";
-
+import { API_URL } from "../config";
 function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -22,7 +22,7 @@ function Login() {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         formData
       );
       localStorage.setItem("token", res.data.token);

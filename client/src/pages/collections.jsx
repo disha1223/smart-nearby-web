@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { API_URL } from "../config";
 function getProxiedImage(url) {
   if (!url) return "";
   return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;

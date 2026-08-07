@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Heart, X, Users, Copy } from "lucide-react";
 import Navbar from "../components/Navbar";
+import { API_URL } from "../config";
 
 function getProxiedImage(url) {
   if (!url) return "";
-  return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
+  return `${API_URL}/api/places/image-proxy?url=${encodeURIComponent(url)}`;
 }
-
 export default function Hangout() {
   const { code } = useParams();
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function Hangout() {
   const fetchSession = useCallback(async () => {
     if (!code) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/hangout/${code}`, {
+      const res = await fetch(`${API_URL}/api/hangout/${code}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -40,7 +40,7 @@ export default function Hangout() {
   useEffect(() => {
     if (!code) return;
     setLoading(true);
-    fetch(`http://localhost:5000/api/hangout/${code}/join`, {
+    fetch(`${API_URL}/api/hangout/${code}/join`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -62,7 +62,7 @@ export default function Hangout() {
 
   const castVote = async (candidateIndex, vote) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/hangout/${code}/vote`, {
+     const res = await fetch(`${API_URL}/api/hangout/${code}/vote`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

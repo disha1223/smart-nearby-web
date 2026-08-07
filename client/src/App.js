@@ -21,7 +21,7 @@ import Journal from "./pages/journal";
 import Hangout from "./pages/Hangout";
 import Insights from "./pages/Insights";
 import PlaceDetail from "./pages/PlaceDetails";
-
+import { API_URL } from "./config";
 
 import studyImg from "./pages/images/study.jpeg";
 import hangoutImg from "./pages/images/hangg.jpeg";
@@ -90,7 +90,7 @@ function TravelInfo({ origin, place }) {
       destinationLng: place.lon,
     });
 
-    fetch(`http://localhost:5000/api/travel-info?${params}`)
+    fetch(`${API_URL}/api/travel-info?${params}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
@@ -171,7 +171,7 @@ function getSubtitle() {
 
 function getProxiedImage(url) {
   if (!url) return "";
-  return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
+  return `${API_URL}/api/places/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 function getOpenBadgeClass(state) {
@@ -265,7 +265,7 @@ const navigate = useNavigate();
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("http://localhost:5000/api/user/favourites", {
+    fetch(`${API_URL}/api/user/favourites`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -283,7 +283,7 @@ const navigate = useNavigate();
   useEffect(() => {
     const loc = getLocation();
     setTrendingLoading(true);
-    fetch(`http://localhost:5000/api/places/trending?lat=${loc.lat}&lon=${loc.lon}&radius=5`)
+    fetch(`${API_URL}/api/places/trending?lat=${loc.lat}&lon=${loc.lon}&radius=5`)
       .then((res) => res.json())
       .then((data) => setTrending(data.results || []))
       .catch(console.error)
@@ -310,7 +310,7 @@ const navigate = useNavigate();
         ...(searchQuery.trim() && { q: searchQuery.trim() }),
         ...(budget && { maxPrice: budget }),
       });
-      const res = await fetch(`http://localhost:5000/api/places?${params}`);
+      const res = await fetch(`${API_URL}/api/places?${params}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPlaces(data.results || []);
@@ -332,7 +332,7 @@ const handleSmartSearch = async () => {
     setIsSmartSearch(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/places/smart", {
+      const res = await fetch(`${API_URL}/api/places/smart`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -364,8 +364,7 @@ const handleSmartSearch = async () => {
     );
 
     try {
-      const res = await fetch("http://localhost:5000/api/user/favourites", {
-        method: "POST",
+const res = await fetch(`${API_URL}/api/user/favourites`, {        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -570,7 +569,7 @@ const handleSmartSearch = async () => {
                   const loc = getLocation();
                   const token = localStorage.getItem("token");
                   try {
-                    const res = await fetch("http://localhost:5000/api/hangout/create", {
+                    const res = await fetch(`${API_URL}/api/hangout/create`, {
                       method: "POST",
                       headers: {
                         "Content-Type": "application/json",

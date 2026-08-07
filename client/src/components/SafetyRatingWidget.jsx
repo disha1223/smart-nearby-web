@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
-
+import { API_URL } from "../config";
 const TIME_LABELS = { day: " Day", evening: " Evening", night: " Night" };
 
 export default function SafetyRatingWidget({ place }) {
@@ -20,14 +20,14 @@ export default function SafetyRatingWidget({ place }) {
 
     const params = new URLSearchParams({ title: place.title, address: place.address });
 
-    fetch(`http://localhost:5000/api/safety?${params}`)
+    fetch(`${API_URL}/api/safety?${params}`)
       .then((res) => res.json())
       .then(setAggregate)
       .catch(console.error)
       .finally(() => setLoading(false));
 
     if (token) {
-      fetch(`http://localhost:5000/api/safety/mine?${params}`, {
+      fetch(`${API_URL}/api/safety/mine?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then((res) => res.json())

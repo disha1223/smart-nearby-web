@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { TrendingUp, MapPin } from "lucide-react";
-
+import { API_URL } from "../config";
 const CATEGORY_STYLES = {
   opportunity: { bg: "#fef3c7", color: "#92400e", label: "Opportunity" },
   "well-served": { bg: "#d1fae5", color: "#065f46", label: "Well served" },
@@ -16,7 +16,7 @@ export default function Insights() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/insights")
+    fetch(`${API_URL}/api/insights`)
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);

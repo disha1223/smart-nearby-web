@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
-
+import { API_URL } from "../config";
 function Journal() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ function Journal() {
       setLoading(false);
       return;
     }
-    fetch("http://localhost:5000/api/user/journal", {
+    fetch(`${API_URL}/api/user/journal`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -35,7 +35,7 @@ function Journal() {
       date: new Date().toISOString(),
     };
     try {
-      const res = await fetch("http://localhost:5000/api/user/journal", {
+      const res = await fetch(`${API_URL}/api/user/journal`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -57,7 +57,7 @@ function Journal() {
   const deleteEntry = async (id) => {
     setEntries((prev) => prev.filter((e) => e._id !== id));
     try {
-      await fetch(`http://localhost:5000/api/user/journal/${id}`, {
+     await fetch(`${API_URL}/api/user/journal/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
