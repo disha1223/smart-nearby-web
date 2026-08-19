@@ -22,6 +22,7 @@ import Hangout from "./pages/Hangout";
 import Insights from "./pages/Insights";
 import PlaceDetail from "./pages/PlaceDetails";
 import { API_URL } from "./config";
+import Footer from "../components/Footer";
 
 import studyImg from "./pages/images/study.jpeg";
 import hangoutImg from "./pages/images/hangg.jpeg";
@@ -515,6 +516,12 @@ const res = await fetch(`${API_URL}/api/user/favourites`, {        method: "POST
                       style={{ backgroundImage: `url(${getProxiedImage(place.thumbnail)})` }}
                       onClick={() => navigate("/place", { state: { place } })}
                     >
+                      <button
+                        className="trending-fav-btn"
+                        onClick={(e) => { e.stopPropagation(); toggleFav(place); }}
+                      >
+                        <Heart size={18} fill={isFav(place) ? "#e0433f" : "none"} color={isFav(place) ? "#e0433f" : "#fff"} />
+                      </button>
                       <span className="trending-card-overlay">
                         <span className="trending-card-rating">★ {place.rating} · {place.reviews} reviews</span>
                         <span className="trending-card-name">{place.title}</span>

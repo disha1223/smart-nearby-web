@@ -2,6 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
+import { Eye, EyeOff } from "lucide-react";
 import "./Auth.css";
 import { API_URL } from "../config";
 function Login() {
@@ -10,6 +11,7 @@ function Login() {
     username: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -49,12 +51,21 @@ function Login() {
           onChange={handleChange}
         />
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          onChange={handleChange}
-        />
+        <div className="password-wrapper">
+          <input
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            onChange={handleChange}
+          />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
 
         <button type="submit">Login</button>
 

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Heart, Phone, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
 import Navbar from "../components/Navbar";
 import SafetyRatingWidget from "../components/SafetyRatingWidget";
+import { API_URL } from "../config";
 import "./PlaceDetail.css";
 
 const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -91,6 +92,56 @@ export default function PlaceDetail() {
   const navigate = useNavigate();
   const place = location.state?.place;
 
+  const [favourites, setFavourites] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    fetch(`${API_URL}/api/user/favourites`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.favourites)) {
+          setFavourites(data.favourites.filter(Boolean));
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const isFav = !!place && favourites.some((p) => p && p.title === place.title);
+
+  const toggleFav = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !place) return;
+
+    const exists = favourites.find((p) => p && p.title === place.title);
+
+    setFavourites((prev) =>
+      exists
+        ? prev.filter((p) => p && p.title !== place.title)
+        : [...prev, place]
+    );
+
+    try {
+      const res = await fetch(`${API_URL}/api/user/favourites`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ place }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data.favourites)) {
+        setFavourites(data.favourites.filter(Boolean));
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   if (!place) {
     return (
       <div>
@@ -118,8 +169,8 @@ export default function PlaceDetail() {
               <h1>{place.title}</h1>
               {place.type && <span className="place-detail-type-pill">{place.type}</span>}
             </div>
-            <button className="place-detail-heart-btn">
-              <Heart size={24} />
+            <button className="place-detail-heart-btn" onClick={toggleFav}>
+              <Heart size={24} fill={isFav ? "#e0433f" : "none"} color={isFav ? "#e0433f" : "#333"} />
             </button>
           </div>
 
@@ -172,7 +223,8 @@ export default function PlaceDetail() {
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.title)}`}
               target="_blank"
               rel="noreferrer"
-              className="place-detail-directions-btn"
+                className="place-detail-directions-btn"
+
             >
               Get Directions
             </a>

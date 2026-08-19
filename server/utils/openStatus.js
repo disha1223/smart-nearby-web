@@ -1,6 +1,11 @@
 // Parses Google-style hour strings like "9 AM–11 PM" or "Open 24 hours"
 // and tells you whether a place is open RIGHT NOW, based on real time —
 // not a stale snapshot from whenever it was seeded.
+//
+// IMPORTANT: this always evaluates "now" in IST (Asia/Kolkata, UTC+5:30),
+// regardless of what timezone the Node server process itself is running in
+// (e.g. AWS EC2 instances default to UTC). Without this, "open now" checks
+// would be off by the server's UTC offset from IST.
 
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
@@ -15,6 +20,15 @@ function parseTimeToMinutes(str) {
   return hour * 60 + minute;
 }
 
+// Builds a Date object whose UTC-getter methods (getUTCDay, getUTCHours,
+// getUTCMinutes) return IST wall-clock values, no matter what timezone
+// the server process is actually running in. This avoids relying on
+// process.env.TZ or any server-level timezone configuration.
+function getISTNow() {
+  const trueUtcMs = Date.now() + new Date().getTimezoneOffset() * 60000;
+  return new Date(trueUtcMs + 5.5 * 60 * 60000);
+}
+
 function isOpenNow(hoursMap) {
   if (!hoursMap) return null;
 
@@ -23,8 +37,8 @@ function isOpenNow(hoursMap) {
   const size = hoursMap.size ?? Object.keys(hoursMap).length;
   if (size === 0) return null; // unknown, not "open"
 
-  const now = new Date();
-  const todayName = DAY_NAMES[now.getDay()];
+  const now = getISTNow();
+  const todayName = DAY_NAMES[now.getUTCDay()];
   const todayStr = get(todayName);
 
   if (!todayStr) return null;
@@ -38,7 +52,7 @@ function isOpenNow(hoursMap) {
   const closeMins = parseTimeToMinutes(closeStr);
   if (openMins == null || closeMins == null) return null;
 
-  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowMins = now.getUTCHours() * 60 + now.getUTCMinutes();
 
   // Handles places open past midnight, e.g. 6 PM–2 AM
   if (closeMins < openMins) {

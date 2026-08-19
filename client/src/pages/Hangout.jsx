@@ -78,11 +78,11 @@ export default function Hangout() {
     }
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+const copyCode = () => {
+  navigator.clipboard.writeText(`${window.location.origin}/hangout/${code}`);
+  setCopied(true);
+  setTimeout(() => setCopied(false), 2000);
+};
 
   if (!code) {
     return (

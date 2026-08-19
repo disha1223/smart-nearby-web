@@ -32,10 +32,10 @@ function getClient() {
 
 getClient();
 
-function buildPlacesCacheKey({ type, query, lat, lon, radius, maxPrice }) {
+function buildPlacesCacheKey({ type, query, lat, lon, radius, maxPrice, v }) {
   const roundedLat = Number(lat).toFixed(2);
   const roundedLon = Number(lon).toFixed(2);
-  return `places:${type}:${query || "none"}:${roundedLat}:${roundedLon}:${radius || "def"}:${maxPrice || "any"}`;
+  return `places:${type}:${v || "v0"}:${query || "none"}:${roundedLat}:${roundedLon}:${radius || "def"}:${maxPrice || "any"}`;
 }
 
 async function getCache(key) {

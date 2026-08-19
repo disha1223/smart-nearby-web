@@ -900,6 +900,26 @@ body {
   font-weight: 600;
   color: #fff;
 }
+.trending-fav-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+  transition: background 0.2s;
+}
+.trending-fav-btn:hover {
+  background: rgba(0,0,0,0.55);
+}
 .open-badge.unknown {
   background: #f1f5f9;
   color: #64748b;

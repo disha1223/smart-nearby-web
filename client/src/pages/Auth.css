@@ -103,3 +103,38 @@ body {
   text-align: center;
   margin: -6px 0 0;
 }
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 46px;
+  box-sizing: border-box;
+}
+
+.auth-card .password-toggle {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: auto;
+  height: auto;
+  box-shadow: none;
+  cursor: pointer;
+  color: #9a9a9a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card .password-toggle:hover {
+  background: none;
+  transform: none;
+  box-shadow: none;
+  color: #4a63f5;
+}
