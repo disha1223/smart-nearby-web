@@ -554,3 +554,31 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 700px) {
+  .landing2-hero {
+    padding: 32px 20px;
+    gap: 28px;
+  }
+  .hero-heading { font-size: 2rem; }
+  .hero-sub { font-size: 0.95rem; }
+  .hero-search {
+    flex-wrap: wrap;
+    padding: 10px;
+    gap: 8px;
+  }
+  .hero-search input { width: 100%; flex: 1 1 100%; }
+  .filters-btn, .discover-btn { flex: 1; justify-content: center; }
+  .hero-stats { flex-wrap: wrap; gap: 14px; }
+  .hero-map { height: 260px; }
+
+  .landing2-guides { padding: 40px 20px; }
+  .guides-heading { font-size: 2rem; }
+  .guides-grid { grid-template-columns: 1fr; }
+  .guide-card { height: 260px; }
+
+  .landing2-cta { padding: 50px 20px; }
+  .landing2-cta h2 { font-size: 1.9rem; }
+
+  .landing2-footer { padding: 40px 20px 24px; }
+}

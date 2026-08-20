@@ -18,7 +18,7 @@ async function sendWelcomeEmail(toEmail, username) {
         <h2 style="color:#4a63f5;">Welcome, ${username}!</h2>
         <p>Your Moodly account has been created successfully.</p>
         <p>Start exploring cities, collections, and your travel journal now.</p>
-        <a href="https://your-app-url.com/login" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#4a63f5;color:#fff;text-decoration:none;border-radius:8px;">
+        <a href="https://smart-nearby-web.vercel.app" style="display:inline-block;margin-top:16px;padding:10px 20px;background:#4a63f5;color:#fff;text-decoration:none;border-radius:8px;">
           Go to Moodly
         </a>
       </div>
