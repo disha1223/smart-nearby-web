@@ -2,22 +2,19 @@
 //
 // Given an origin (user's current location or a chosen landmark) and a
 // destination (a place card), this returns:
-//   - straight-line/road distance
-//   - walking time
-//   - an ESTIMATED auto-rickshaw fare (Google Maps has no such data for Manipal)
-//   - public bus availability on that route
-//
-// If GOOGLE_MAPS_API_KEY is configured, we use the Distance Matrix API for
-// accurate road distance/walking time and the Directions API (transit mode)
-// for bus info. If the key is missing or a call fails, we fall back to a
-// haversine straight-line distance so the feature still works end-to-end.
+//   - real road-walking distance/time via OSRM (free, no API key needed)
+//   - a distance-proportional auto-rickshaw fare estimate
+//   - public bus availability, checked against a hardcoded real
+//     Manipal-Udupi corridor (no transit API covers this area at all,
+//     Google included, so this hardcoded corridor IS the real answer here)
+//   - if OSRM fails, a haversine straight-line fallback so the feature
+//     still works end-to-end
 
 const express = require("express");
 const axios = require("axios");
 const router = express.Router();
 const { getCache, setCache } = require("../utils/cache");
-
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const { CORRIDOR_STOPS, CORRIDOR_INFO } = require("../data/busCorridor");
 
 // ---------- Fallback distance calculation (haversine) ----------
 function haversineKm(lat1, lon1, lat2, lon2) {
@@ -32,14 +29,10 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-// Straight-line distance underestimates actual road distance, so we pad it
-// a bit when we don't have a real routing API to work with.
 const FALLBACK_ROAD_FACTOR = 1.25;
-// Average walking speed used for the fallback ETA.
 const AVG_WALK_KMPH = 5;
 
 // ---------- Auto-rickshaw fare estimator ----------
-// Base fare = ₹30, first 2 km included, ₹15/km after that.
 function estimateAutoFare(distanceKm) {
   const BASE_FARE = 30;
   const INCLUDED_KM = 2;
@@ -48,7 +41,6 @@ function estimateAutoFare(distanceKm) {
   const extraKm = Math.max(0, distanceKm - INCLUDED_KM);
   const rawFare = BASE_FARE + extraKm * RATE_PER_KM;
 
-  // Give a friendly ± range around the raw estimate, rounded to nearest 10.
   const low = Math.max(20, Math.round((rawFare - 10) / 10) * 10);
   const high = Math.round((rawFare + 10) / 10) * 10;
 
@@ -61,69 +53,63 @@ function formatWalkingTime(minutes) {
   return `${rounded} min walk`;
 }
 
-// ---------- Google Distance Matrix (walking) ----------
+// ---------- OSRM (free, no key) walking route ----------
+// OSRM's public demo server. Note: its default profile is car-based routing,
+// but for a walkable-radius app like this (few km max), it still returns a
+// real road-following distance, which is what we actually need — we apply
+// our own walking speed to get the ETA rather than trusting OSRM's
+// car-oriented duration field.
 async function fetchWalkingInfo(originLat, originLng, destLat, destLng) {
-  if (!GOOGLE_MAPS_API_KEY) return null;
+  const url = `https://router.project-osrm.org/route/v1/foot/${originLng},${originLat};${destLng},${destLat}`;
 
-  const res = await axios.get(
-    "https://maps.googleapis.com/maps/api/distancematrix/json",
-    {
-      params: {
-        origins: `${originLat},${originLng}`,
-        destinations: `${destLat},${destLng}`,
-        mode: "walking",
-        units: "metric",
-        key: GOOGLE_MAPS_API_KEY,
-      },
-      timeout: 5000,
-    }
-  );
+  const res = await axios.get(url, {
+    params: { overview: "false" },
+    timeout: 6000,
+  });
 
-  const element = res.data?.rows?.[0]?.elements?.[0];
-  if (!element || element.status !== "OK") return null;
+  const route = res.data?.routes?.[0];
+  if (!route) return null;
 
   return {
-    distanceKm: element.distance.value / 1000,
-    walkingMinutes: element.duration.value / 60,
+    distanceKm: route.distance / 1000, // meters -> km
+    walkingMinutes: route.duration / 60, // seconds -> minutes
   };
 }
 
-// ---------- Google Directions (transit) for bus info ----------
-async function fetchBusInfo(originLat, originLng, destLat, destLng) {
-  if (!GOOGLE_MAPS_API_KEY) return null;
+// ---------- Manipal-Udupi corridor bus check ----------
+const CORRIDOR_SNAP_KM = 0.6;
 
-  const res = await axios.get(
-    "https://maps.googleapis.com/maps/api/directions/json",
-    {
-      params: {
-        origin: `${originLat},${originLng}`,
-        destination: `${destLat},${destLng}`,
-        mode: "transit",
-        transit_mode: "bus",
-        key: GOOGLE_MAPS_API_KEY,
-      },
-      timeout: 5000,
+function nearestCorridorStop(lat, lon) {
+  let nearest = null;
+  let nearestDist = Infinity;
+  for (const stop of CORRIDOR_STOPS) {
+    const d = haversineKm(lat, lon, stop.lat, stop.lon);
+    if (d < nearestDist) {
+      nearestDist = d;
+      nearest = stop;
     }
-  );
+  }
+  return nearestDist <= CORRIDOR_SNAP_KM ? { stop: nearest, distanceKm: nearestDist } : null;
+}
 
-  const route = res.data?.routes?.[0];
-  if (!route || res.data.status !== "OK") {
+function checkCorridorBus(oLat, oLng, dLat, dLng, roadDistanceKm) {
+  const originStop = nearestCorridorStop(oLat, oLng);
+  const destStop = nearestCorridorStop(dLat, dLng);
+
+  if (!originStop || !destStop || originStop.stop.name === destStop.stop.name) {
     return { available: false };
   }
 
-  const transitStep = route.legs?.[0]?.steps?.find(
-    (s) => s.travel_mode === "TRANSIT" && s.transit_details?.line?.vehicle?.type === "BUS"
+  const fare = Math.max(
+    CORRIDOR_INFO.baseFare,
+    Math.round(CORRIDOR_INFO.baseFare + roadDistanceKm * CORRIDOR_INFO.farePerKm)
   );
 
-  if (!transitStep) {
-    return { available: false };
-  }
-
-  const line = transitStep.transit_details.line;
   return {
     available: true,
-    route: line.short_name || line.name || "Bus",
-    durationMinutes: Math.round(transitStep.duration.value / 60),
+    route: `${CORRIDOR_INFO.routeName} (${originStop.stop.name} → ${destStop.stop.name})`,
+    frequencyMinutes: CORRIDOR_INFO.frequencyMinutes,
+    fare,
   };
 }
 
@@ -157,10 +143,12 @@ router.get("/", async (req, res) => {
     const walkInfo = await fetchWalkingInfo(oLat, oLng, dLat, dLng);
     if (walkInfo) {
       distanceKm = walkInfo.distanceKm;
-      walkingMinutes = walkInfo.walkingMinutes;
+      // We apply our own walking speed instead of OSRM's duration, since
+      // OSRM's default profile skews toward car-timing assumptions.
+      walkingMinutes = (walkInfo.distanceKm / AVG_WALK_KMPH) * 60;
     }
   } catch (err) {
-    console.error("Distance Matrix API failed, falling back:", err.message);
+    console.error("OSRM routing failed, falling back:", err.message);
   }
 
   if (distanceKm == null) {
@@ -171,11 +159,13 @@ router.get("/", async (req, res) => {
   }
 
   let busInfo = { available: false };
-  try {
-    const info = await fetchBusInfo(oLat, oLng, dLat, dLng);
-    if (info) busInfo = info;
-  } catch (err) {
-    console.error("Directions API (transit) failed:", err.message);
+  const corridorResult = checkCorridorBus(oLat, oLng, dLat, dLng, distanceKm);
+  if (corridorResult.available) {
+    busInfo = {
+      available: true,
+      route: corridorResult.route,
+      label: `${corridorResult.route} · every ~${corridorResult.frequencyMinutes} min · ₹${corridorResult.fare}`,
+    };
   }
 
   const fare = estimateAutoFare(distanceKm);
@@ -195,14 +185,7 @@ router.get("/", async (req, res) => {
       label: `${fare.label} (Estimated)`,
     },
     busInfo: busInfo.available
-      ? {
-          available: true,
-          route: busInfo.route,
-          durationMinutes: busInfo.durationMinutes,
-          label: busInfo.durationMinutes
-            ? `${busInfo.route} · ${busInfo.durationMinutes} mins`
-            : busInfo.route,
-        }
+      ? { available: true, route: busInfo.route, label: busInfo.label }
       : { available: false, label: "No direct bus" },
     usedFallback,
   };

@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import "./Auth.css";
 import { API_URL } from "../config";
+
 function Signup() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -12,6 +13,7 @@ function Signup() {
     password: "",
   });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
@@ -23,21 +25,20 @@ function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     setError("");
+    setLoading(true);
 
     try {
-      const res = await axios.post(
-       `${API_URL}/api/auth/signup`,
-        formData
-      );
-
+      const res = await axios.post(`${API_URL}/api/auth/signup`, formData);
       localStorage.setItem("username", res.data.username);
-
       navigate("/login");
     } catch (error) {
       const message =
         error.response?.data?.message || "Something went wrong. Please try again.";
       setError(message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,7 +83,9 @@ function Signup() {
 
         {error && <p className="auth-error">{error}</p>}
 
-        <button type="submit">Sign Up</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Signing up..." : "Sign Up"}
+        </button>
 
         <span>
           Already have an account?

@@ -9,14 +9,16 @@
 
 const DAY_NAMES = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 
-function parseTimeToMinutes(str) {
-  const match = str.trim().match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
+function parseTimeToMinutes(str, fallbackMeridiem) {
+  const match = str.trim().match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/i);
   if (!match) return null;
   let [, hour, minute, meridiem] = match;
   hour = parseInt(hour, 10);
   minute = minute ? parseInt(minute, 10) : 0;
-  if (meridiem.toUpperCase() === "PM" && hour !== 12) hour += 12;
-  if (meridiem.toUpperCase() === "AM" && hour === 12) hour = 0;
+  meridiem = (meridiem || fallbackMeridiem || "").toUpperCase();
+  if (!meridiem) return null; // still no way to know AM/PM
+  if (meridiem === "PM" && hour !== 12) hour += 12;
+  if (meridiem === "AM" && hour === 12) hour = 0;
   return hour * 60 + minute;
 }
 
@@ -25,8 +27,7 @@ function parseTimeToMinutes(str) {
 // the server process is actually running in. This avoids relying on
 // process.env.TZ or any server-level timezone configuration.
 function getISTNow() {
-  const trueUtcMs = Date.now() + new Date().getTimezoneOffset() * 60000;
-  return new Date(trueUtcMs + 5.5 * 60 * 60000);
+  return new Date(Date.now() + 5.5 * 60 * 60000);
 }
 
 function isOpenNow(hoursMap) {
@@ -48,7 +49,10 @@ function isOpenNow(hoursMap) {
   const [openStr, closeStr] = todayStr.split(/[–-]/);
   if (!openStr || !closeStr) return null;
 
-  const openMins = parseTimeToMinutes(openStr);
+  const closeMeridiemMatch = closeStr.trim().match(/(AM|PM)/i);
+  const closeMeridiem = closeMeridiemMatch ? closeMeridiemMatch[1] : null;
+
+  const openMins = parseTimeToMinutes(openStr, closeMeridiem);
   const closeMins = parseTimeToMinutes(closeStr);
   if (openMins == null || closeMins == null) return null;
 
@@ -61,4 +65,4 @@ function isOpenNow(hoursMap) {
   return nowMins >= openMins && nowMins < closeMins;
 }
 
-module.exports = { isOpenNow };
+module.exports = { isOpenNow, getISTNow };
