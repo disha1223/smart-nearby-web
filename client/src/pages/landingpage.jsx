@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { MapPin, Search, ArrowRight, UtensilsCrossed, Coffee, Star } from "lucide-react";
 import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import "./landingpage.css";
 
 const FLOATING_PLACES = [
@@ -195,8 +194,6 @@ function LandingPage() {
           Get started <ArrowRight size={16} />
         </Link>
       </section>
-
-      <Footer />
     </div>
   );
 }

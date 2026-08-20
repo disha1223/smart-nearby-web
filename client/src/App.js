@@ -22,7 +22,7 @@ import Hangout from "./pages/Hangout";
 import Insights from "./pages/Insights";
 import PlaceDetail from "./pages/PlaceDetails";
 import { API_URL } from "./config";
-import Footer from "../components/Footer";
+import Footer from "./components/Footer";
 
 import studyImg from "./pages/images/study.jpeg";
 import hangoutImg from "./pages/images/hangg.jpeg";
@@ -150,6 +150,7 @@ const SORT_OPTIONS = [
 
 function getGreeting() {
   const hour = new Date().getHours();
+  if (hour < 5) return "Good night.";
   if (hour < 12) return "Good morning.";
   if (hour < 17) return "Good afternoon.";
   if (hour < 21) return "Good evening.";
@@ -828,6 +829,8 @@ export default function App() {
 <Route path="/place" element={<PlaceDetail />} />
 
       </Routes>
+
+      <Footer />
     </BrowserRouter>
   );
 }
