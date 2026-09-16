@@ -40,7 +40,12 @@ function ProtectedRoute({ children }) {
   const isValid = token && token !== "undefined" && token !== "null";
   return isValid ? children : <Navigate to="/login" replace />;
 }
-
+function weightedScore(rating = 0, reviews = 0, minVotes = 10) {
+  const PRIOR = 3.8;
+  const v = reviews || 0;
+  const R = rating || 0;
+  return (v / (v + minVotes)) * R + (minVotes / (v + minVotes)) * PRIOR;
+}
 const MOODS = [
   { key: "study", label: "Study", sub: "Quiet & Focused", color: "#667eea", bg: "#e0e4ff", img: studyImg },
   { key: "hangout", label: "Hangout", sub: "Rooftops & Long Tables", color: "#ec4899", bg: "#fce7f3", img: hangoutImg },
@@ -143,6 +148,7 @@ const BUDGET_OPTIONS = [
   { label: "Under ₹5000", value: "$$$" },
 ];
 const SORT_OPTIONS = [
+  { label: "Recommended", value: "recommended" },
   { label: "Rating", value: "rating" },
   { label: "Reviews", value: "reviews" },
   { label: "Name", value: "name" },
@@ -192,7 +198,7 @@ function Dashboard() {
   const [radius, setRadius] = useState(3);
   const [budget, setBudget] = useState("");
   const [openNow, setOpenNow] = useState(false);
-  const [sortBy, setSortBy] = useState("rating");
+  const [sortBy, setSortBy] = useState("recommended");
   const [searchQuery, setSearchQuery] = useState("");
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -403,6 +409,7 @@ const res = await fetch(`${API_URL}/api/user/favourites`, {        method: "POST
       );
     }
     result.sort((a, b) => {
+      if (sortBy === "recommended") return weightedScore(b.rating, b.reviews) - weightedScore(a.rating, a.reviews);
       if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
       if (sortBy === "reviews") return (b.reviews || 0) - (a.reviews || 0);
       if (sortBy === "name") return a.title?.localeCompare(b.title);

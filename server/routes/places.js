@@ -8,7 +8,7 @@ const { isOpenNow } = require("../utils/openStatus");
 const Place = require("../models/Place");
 const SearchLog = require("../models/SearchLog");
 const { MOOD_QUERIES, getMaxRupeeFromPriceLevel, isMoodMismatch, scorePlace } = require("../utils/moodConfig");
-
+const { weightedScore } = require("../utils/ranking");
 const FALLBACK_IMAGES = {
   study: "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?w=600",
   hangout: "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=600",
@@ -224,6 +224,18 @@ router.post("/smart", async (req, res) => {
         return !intent.excludeKeywords.some((word) => haystack.includes(word));
       });
     }
+
+    // Drop near-zero-review outliers that would otherwise game a raw-rating sort
+    // Prefer places with a real review base, but never let that filter
+    // empty the list out in areas with sparse data — fall back to the
+    // full set if filtering would leave nothing.
+    const wellReviewed = results.filter((p) => (p.reviews || 0) >= 3);
+    if (wellReviewed.length > 0) {
+      results = wellReviewed;
+    }
+
+    // Rank by review-count-aware quality, not raw rating
+    results.sort((a, b) => weightedScore(b.rating, b.reviews) - weightedScore(a.rating, a.reviews));
 
     const responseBody = { mood: query, results, total: results.length, interpretedAs: intent };
     SearchLog.create({ mood: query, lat: userLat, lon: userLon, resultsCount: results.length }).catch((e) =>

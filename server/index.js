@@ -25,7 +25,8 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors({
   origin: ["http://localhost:3000", "https://smart-nearby-web.vercel.app"],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
 app.use(express.json());
