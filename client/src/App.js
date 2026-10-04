@@ -775,7 +775,7 @@ onError={async (e) => {
       const res = await fetch(`${API_URL}/api/places/photos?dataId=${place.dataId}`);
       const data = await res.json();
       if (data.photos && data.photos[0]) {
-        e.target.src = getImageUrl(data.photos[0]);
+        e.target.src = getProxiedImage(data.photos[0]);
         return;
       }
     } catch {}
