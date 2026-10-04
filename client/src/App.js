@@ -768,8 +768,20 @@ const toggleFav = async (place) => {
   src={getProxiedImage(place.thumbnail)}
   alt={place.title}
   className="place-img"
-  onError={(e) => { e.target.src = "https://placehold.co/400x200?text=No+Image"; }}
-/>
+onError={async (e) => {
+  if (!e.target.dataset.retried && place.dataId) {
+    e.target.dataset.retried = "1";
+    try {
+      const res = await fetch(`${API_URL}/api/places/photos?dataId=${place.dataId}`);
+      const data = await res.json();
+      if (data.photos && data.photos[0]) {
+        e.target.src = getImageUrl(data.photos[0]);
+        return;
+      }
+    } catch {}
+  }
+  e.target.src = "https://placehold.co/400x200?text=No+Image";
+}}/>
                     <div className="place-img-overlay">
                       <span className="place-name-overlay">{place.title}</span>
                       {place.rating && <span className="rating-overlay">{place.rating}</span>}
