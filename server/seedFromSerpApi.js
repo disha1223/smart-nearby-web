@@ -10,8 +10,7 @@ const CENTER_LON = parseFloat(process.argv[3]) || 74.7934;
 const CITY_NAME = process.argv[4] || "Manipal";
 const CITY_SLUG = CITY_NAME.toLowerCase().replace(/\s+/g, "-");
 
-// Two search phrasings per mood now — wider net for trending to pick from,
-// still cheap: 10 moods x 2 queries = 20 SerpApi calls per run.
+
 const MOOD_QUERIES = {
   study: ["cafes with wifi", "study cafes"],
   hangout: ["hangout spots", "restaurants"],

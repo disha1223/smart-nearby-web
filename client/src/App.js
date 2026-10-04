@@ -269,21 +269,27 @@ const navigate = useNavigate();
         return lm ? { lat: lm.lat, lon: lm.lon } : null;
       })();
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-    fetch(`${API_URL}/api/user/favourites`, {
-      headers: { Authorization: `Bearer ${token}` },
+  fetch(`${API_URL}/api/user/favourites`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then((res) => {
+      if (res.status === 401) {
+        localStorage.removeItem("token");
+        return null;
+      }
+      return res.json();
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data.favourites)) {
-          setFavourites(data.favourites.filter(Boolean));
-        }
-      })
-      .catch(console.error);
-  }, []);
+    .then((data) => {
+      if (data && Array.isArray(data.favourites)) {
+        setFavourites(data.favourites.filter(Boolean));
+      }
+    })
+    .catch((err) => console.error("Failed to load favourites:", err));
+}, []);
 
   const getLocation = () =>
     useGPS && gpsLocation ? gpsLocation : { lat: city.lat, lon: city.lon };
@@ -359,34 +365,52 @@ const handleSmartSearch = async () => {
       setSmartLoading(false);
     }
   };
-  const toggleFav = async (place) => {
-    const token = localStorage.getItem("token");
-    if (!token || !place) return;
+const toggleFav = async (place) => {
+  const token = localStorage.getItem("token");
+  if (!token || !place) return;
 
-    const exists = favourites.find((p) => p && p.title === place.title);
+  const exists = favourites.find((p) => p && p.title === place.title);
 
-    setFavourites((prev) =>
-      exists
-        ? prev.filter((p) => p && p.title !== place.title)
-        : [...prev, place]
-    );
+  setFavourites((prev) =>
+    exists
+      ? prev.filter((p) => p && p.title !== place.title)
+      : [...prev, place]
+  );
 
-    try {
-const res = await fetch(`${API_URL}/api/user/favourites`, {        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ place }),
-      });
-      const data = await res.json();
-      if (Array.isArray(data.favourites)) {
-        setFavourites(data.favourites.filter(Boolean));
-      }
-    } catch (error) {
-      console.error(error);
+  try {
+    const res = await fetch(`${API_URL}/api/user/favourites`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ place }),
+    });
+
+    if (res.status === 401) {
+      // Token's dead — stop pretending it worked, and force a clean re-login
+      localStorage.removeItem("token");
+      setFavourites((prev) =>
+        exists ? [...prev, place] : prev.filter((p) => p && p.title !== place.title)
+      ); // roll back the optimistic toggle
+      alert("Your session expired — please log in again.");
+      return;
     }
-  };
+
+    if (!res.ok) throw new Error(`Favourites request failed: ${res.status}`);
+
+    const data = await res.json();
+    if (Array.isArray(data.favourites)) {
+      setFavourites(data.favourites.filter(Boolean));
+    }
+  } catch (error) {
+    console.error(error);
+    // roll back optimistic update on any failure
+    setFavourites((prev) =>
+      exists ? [...prev, place] : prev.filter((p) => p && p.title !== place.title)
+    );
+  }
+};
 
   const isFav = (place) =>
     !!place && favourites.some((p) => p && p.title === place.title);

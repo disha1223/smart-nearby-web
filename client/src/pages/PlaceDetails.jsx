@@ -10,7 +10,7 @@ const DAY_ORDER = ["monday", "tuesday", "wednesday", "thursday", "friday", "satu
 
 function getProxiedImage(url) {
   if (!url) return "";
-  return `http://localhost:5000/api/places/image-proxy?url=${encodeURIComponent(url)}`;
+  return `http://api/places/image-proxy?url=${encodeURIComponent(url)}`;
 }
 
 function todayName() {
@@ -27,7 +27,7 @@ function PhotoGallery({ place }) {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`http://localhost:5000/api/places/photos?dataId=${encodeURIComponent(place.dataId)}`)
+    fetch(`http://api/places/photos?dataId=${encodeURIComponent(place.dataId)}`)
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;

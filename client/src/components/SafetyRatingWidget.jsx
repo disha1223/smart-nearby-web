@@ -43,7 +43,7 @@ export default function SafetyRatingWidget({ place }) {
   useEffect(() => {
     if (!token || !place?.title || !place?.address) return;
     const params = new URLSearchParams({ title: place.title, address: place.address });
-    fetch(`http://localhost:5000/api/safety/mine?${params}`, {
+    fetch(`http:/api/safety/mine?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -60,7 +60,7 @@ export default function SafetyRatingWidget({ place }) {
     setMyRating(stars);
     setSubmitting(true);
     try {
-      const res = await fetch("http://localhost:5000/api/safety/rate", {
+      const res = await fetch("http://api/safety/rate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -76,7 +76,7 @@ export default function SafetyRatingWidget({ place }) {
       if (!res.ok) throw new Error("Failed to save");
       setJustSaved(true);
       const params = new URLSearchParams({ title: place.title, address: place.address });
-      const aggRes = await fetch(`http://localhost:5000/api/safety?${params}`);
+      const aggRes = await fetch(`http://api/safety?${params}`);
       setAggregate(await aggRes.json());
     } catch (err) {
       console.error(err);
